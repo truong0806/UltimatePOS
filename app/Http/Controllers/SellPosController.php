@@ -1426,7 +1426,7 @@ class SellPosController extends Controller
                 if ($transaction->type == 'sell') {
 
                     //Update payment status
-                    $payment_status = $this->transactionUtil->updatePaymentStatus($transaction->id, $transaction->final_total);
+                    $payment_status = $this->transactionUtil->updatePaymentStatus($transaction->id, $transaction->final_total, $transaction->transaction_status_before);
                     $transaction->payment_status = $payment_status;
 
                     //Update product stock

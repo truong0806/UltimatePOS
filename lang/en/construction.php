@@ -2,6 +2,7 @@
 
 return [
     'introducer' => 'Introducer',
+    'view_construction' => 'View construction',
     'customer' => 'Customer',
     'add_construction' => 'Add Construction',
     'name' => 'Name',

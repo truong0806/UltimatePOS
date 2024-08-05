@@ -401,32 +401,5 @@ class Contact extends Authenticatable
         return $this->hasMany(Transaction::class);
     }
 
-    public function updateCommission($transaction, $isDelete = false)
-    {
-
-        //Skip updateCommission if commission_percent is null
-
-        if (is_null($this->custom_field1) || is_null($transaction->construction_id)) {
-            return;
-        }
-        $commission = $transaction->total_before_tax * ($this->custom_field1 / 100);
-
-        if ($transaction->status == 'final') {
-            if ($isDelete) {
-                $this->custom_field2 -= $commission;
-                $this->custom_field4 += $commission;
-            } else {
-                $this->custom_field2 += $commission;
-                $this->custom_field4 -= $commission;
-            }
-        } else {
-            if ($isDelete) {
-                $this->custom_field4 -= $commission;
-            } else {
-                $this->custom_field4 += $commission;
-            }
-        }
-
-        $this->save();
-    }
+    
 }

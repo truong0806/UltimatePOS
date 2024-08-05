@@ -8,6 +8,7 @@ return [
     'construction' => "Construction",
     'contact_name' => "Customer name",
     'introducer_name' => "Introducer name",
+    'select_construction' => "Select construction",
     'commission_percentage' => "Construction Commission percentage",
     'commission_amount' => "Commission amount",
     'introducer_name' => "Introducer name",

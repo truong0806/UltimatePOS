@@ -128,7 +128,8 @@ class TransactionPaymentController extends Controller
                 }
 
                 //update payment status
-                $payment_status = $this->transactionUtil->updatePaymentStatus($transaction_id, $transaction->final_total);
+                $transaction_status_before = $transaction->status;
+                $payment_status = $this->transactionUtil->updatePaymentStatus($transaction_id, $transaction->final_total, $transaction_status_before);
                 $transaction->payment_status = $payment_status;
 
                 $this->transactionUtil->activityLog($transaction, 'payment_edited', $transaction_before);

@@ -112,8 +112,9 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::delete('/constructions/{id}', [ConstructionController::class, 'deleteConstruction']);
     Route::get('constructions/{id}', [ConstructionController::class, 'view'])->name('constructions.view');
     Route::get('/constructions/{id}/edit', [ConstructionController::class, 'edit'])->name('constructions.edit');
-
-    Route::put('/constructions/{id}', [ConstructionController::class, 'update'])->name('constructions.update');
+    Route::get('/constructions/{id}', [ConstructionController::class, 'show'])->name('constructions.show');
+    Route::get('/constructions/payments/{construction_id}', [ConstructionController::class, 'getConstructionPayments']);
+   
     Route::delete('/constructions/{id}', [ConstructionController::class, 'destroy'])->name('constructions.destroy');
 
     Route::get('pos/payment/{id}', [SellPosController::class, 'edit'])->name('edit-pos-payment');
@@ -166,6 +167,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::post('/contacts/import', [ContactController::class, 'postImportContacts']);
     Route::post('/contacts/check-contacts-id', [ContactController::class, 'checkContactId']);
     Route::get('/contacts/customers', [ContactController::class, 'getCustomers']);
+    Route::get('/contacts/id/{id}', [ContactController::class, 'getCustomersById']);
     Route::resource('contacts', ContactController::class);
 
     Route::get('taxonomies-ajax-index-page', [TaxonomyController::class, 'getTaxonomyIndexPage']);

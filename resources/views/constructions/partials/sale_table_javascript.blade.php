@@ -1,9 +1,6 @@
 <script type="text/javascript">
     $(document).ready(function() {
-        if ($.fn.DataTable.isDataTable('#sell_table')) {
-            $('#sell_table').DataTable().destroy();
-            $('#sell_table').empty(); // Clear the table content if necessary
-        }
+
         //Date range as a button
         $('#sell_list_filter_date_range').daterangepicker(
             dateRangeSettings,
@@ -36,7 +33,6 @@
             "ajax": {
                 "url": "/sells",
                 "data": function(d) {
-                    console.log("🚀 ~ $ ~ d:", d)
                     if ($('#sell_list_filter_date_range').val()) {
                         var start = $('#sell_list_filter_date_range').data('daterangepicker')
                             .startDate.format('YYYY-MM-DD');
@@ -52,12 +48,7 @@
                     if ($('#sell_list_filter_location_id').length) {
                         d.location_id = $('#sell_list_filter_location_id').val();
                     }
-                    if ($('#sell_list_filter_customer_id').val()) {
-                        d.customer_id = $('#sell_list_filter_customer_id').val();
-                    }
-                    if ($('#sell_list_filter_construction_id').val()) {
-                        d.construction_id = $('#sell_list_filter_construction_id').val();
-                    }
+                    d.construction_id = $('#sell_list_filter_customer_id').val();
 
                     if ($('#sell_list_filter_payment_status').length) {
                         d.payment_status = $('#sell_list_filter_payment_status').val();
@@ -77,14 +68,13 @@
                     }
 
                     if ($('#only_subscriptions').length && $('#only_subscriptions').is(
-                            ':checked')) {
+                        ':checked')) {
                         d.only_subscriptions = 1;
                     }
 
                     d = __datatable_ajax_callback(d);
                 }
             },
-
             columns: [{
                     data: 'action',
                     name: 'action',

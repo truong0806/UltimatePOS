@@ -698,10 +698,6 @@ class ContactController extends Controller
         $business_id = request()->session()->get('user.business_id');
         $contact = $this->contactUtil->getContactInfo($business_id, $id);
 
-
-        $introducer = $this->contactUtil->getContactInfo($business_id, $intro_id);
-
-
         $is_selected_contacts = User::isSelectedContacts(auth()->user()->id);
         $user_contacts = [];
         if ($is_selected_contacts) {
@@ -740,6 +736,35 @@ class ContactController extends Controller
 
         return view('contact.show')
             ->with(compact('contact', 'introducer', 'reward_enabled', 'contact_dropdown', 'business_locations', 'view_type', 'contact_view_tabs', 'activities'));
+    }
+
+    public function getCustomersById($id)
+    {
+        if (!auth()->user()->can('supplier.view') && !auth()->user()->can('customer.view') && !auth()->user()->can('customer.view_own') && !auth()->user()->can('supplier.view_own')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $business_id = request()->session()->get('user.business_id');
+        $contact = $this->contactUtil->getContactInfo($business_id, $id);
+
+        $is_selected_contacts = User::isSelectedContacts(auth()->user()->id);
+        $user_contacts = [];
+        if ($is_selected_contacts) {
+            $user_contacts = auth()->user()->contactAccess->pluck('id')->toArray();
+        }
+
+        if (!auth()->user()->can('supplier.view') && auth()->user()->can('supplier.view_own')) {
+            if ($contact->created_by != auth()->user()->id & !in_array($contact->id, $user_contacts)) {
+                abort(403, 'Unauthorized action.');
+            }
+        }
+        if (!auth()->user()->can('customer.view') && auth()->user()->can('customer.view_own')) {
+            if ($contact->created_by != auth()->user()->id & !in_array($contact->id, $user_contacts)) {
+                abort(403, 'Unauthorized action.');
+            }
+        }
+
+        return json_encode($contact);
     }
 
     /**
@@ -994,7 +1019,8 @@ class ContactController extends Controller
                 'export_custom_field_3',
                 'export_custom_field_4',
                 'export_custom_field_5',
-                'export_custom_field_6'
+                'export_custom_field_6',
+                'custom_field1'
             );
 
             if (request()->session()->get('business.enable_rp') == 1) {

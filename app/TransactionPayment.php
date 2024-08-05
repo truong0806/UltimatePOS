@@ -52,7 +52,7 @@ class TransactionPayment extends Model
      */
     public function getDocumentPathAttribute()
     {
-        $path = ! empty($this->document) ? asset('/uploads/documents/'.$this->document) : null;
+        $path = !empty($this->document) ? asset('/uploads/documents/' . $this->document) : null;
 
         return $path;
     }
@@ -62,7 +62,7 @@ class TransactionPayment extends Model
      */
     public function getDocumentNameAttribute()
     {
-        $document_name = ! empty(explode('_', $this->document, 2)[1]) ? explode('_', $this->document, 2)[1] : $this->document;
+        $document_name = !empty(explode('_', $this->document, 2)[1]) ? explode('_', $this->document, 2)[1] : $this->document;
 
         return $document_name;
     }
@@ -70,7 +70,7 @@ class TransactionPayment extends Model
     public static function deletePayment($payment)
     {
         //Update parent payment if exists
-        if (! empty($payment->parent_id)) {
+        if (!empty($payment->parent_id)) {
             $parent_payment = TransactionPayment::find($payment->parent_id);
             $parent_payment->amount -= $payment->amount;
 
@@ -87,13 +87,12 @@ class TransactionPayment extends Model
         $payment->delete();
 
         $transactionUtil = new \App\Utils\TransactionUtil();
-
-        if (! empty($payment->transaction_id)) {
+        if (!empty($payment->transaction_id)) {
             //update payment status
             $transaction = $payment->load('transaction')->transaction;
             $transaction_before = $transaction->replicate();
-
-            $payment_status = $transactionUtil->updatePaymentStatus($payment->transaction_id);
+            $transaction_status_before = 'isDeletePayment';
+            $payment_status = $transactionUtil->updatePaymentStatus($payment->transaction_id, null, $transaction_status_before);
 
             $transaction->payment_status = $payment_status;
 

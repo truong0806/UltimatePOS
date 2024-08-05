@@ -144,7 +144,7 @@
                             aria-labelledby="gridSystemModalLabel"></div>
                     @endif
 
-                    @if (!in_array('subscription', $enabled_modules))
+                    @if (in_array('subscription', $enabled_modules))
                         <div class="col-md-4 pull-right col-sm-6">
                             <div class="checkbox">
                                 <label>
@@ -219,6 +219,16 @@
                                 {{ $walk_in_customer['name'] ?? '' }},<br>
                                 {{ $walk_in_customer['shipping_address'] ?? '' }}
                             </div>
+                            <div id="commission_percentage_container"
+                                style="display: {{ !empty($walk_in_customer['custom_field1']) ? 'block' : 'none' }}">
+                                <strong>
+                                    @lang('lang_v1.commission_percentage'):
+                                </strong>
+                                <div id="commission_percentage">
+                                    {{ $walk_in_customer['custom_field1'] ?? '' }}
+                                </div>
+                            </div>
+
                         </small>
                     </div>
 
@@ -1249,7 +1259,7 @@
 
 
     @include('sale_pos.partials.configure_search_modal')
-     
+
 @stop
 
 @section('javascript')
@@ -1343,10 +1353,61 @@
                 if ($(this).is(':checked')) {
                     $('#constructionModal').modal('show');
                     loadConstructions();
+
                 } else {
                     $('#constructionModal').modal('hide');
                 }
             });
+
+            $('#constructionSelect').on('select2:select', function(e) {
+                var data = e.params.data;
+                console.log("🚀 ~ $ ~ data:", data)
+                $('#constructionDetails').empty();
+                updateConstructionDetails(data);
+                $('#construction_id').val(data.id);
+                $('#contact_id').val(data.customer_id);
+                if (data.customer_id) {
+                    setCustomerId(data.customer_id);
+                    // $('#customer_id').prop('disabled', true);
+                    $('#customer_id').val(data.customer_id).trigger('change');
+                }
+
+                $('#commission_percentage_container').hide();
+            });
+
+
+
+            function setCustomerId(customer_id) {
+                $.ajax({
+                    url: '/contacts/id/' + customer_id,
+                    dataType: 'json',
+                    success: function(data) {
+                        var option = new Option(data.name, data.id, true, true);
+                        $('#customer_id').append(option).trigger('change');
+                        $('#customer_id').trigger({
+                            type: 'select2:select',
+                            params: {
+                                data: data
+                            }
+                        });
+                    }
+                });
+            }
+
+            function updateConstructionDetails(data) {
+                if (data) {
+                    console.log('Selected construction data:', data);
+                    $('#constructionDetails').html(
+                        '<p><b>@lang('construction.name') </b>: ' + data.text + '</p>' +
+                        '<p><b>@lang('construction.description') </b>: ' + (data?.description || 'N/A') + '</p>' +
+                        '<p><b>@lang('construction.start_date') </b>: ' + (data?.start_date || 'N/A') + '</p>' +
+                        '<p><b>@lang('construction.end_date') </b>: ' + (data?.end_date || 'N/A') + '</p>' +
+                        '<p><b>@lang('construction.customer') </b>: ' + (data?.contact_name || 'N/A') + '</p>' +
+                        '<p><b>@lang('construction.introducer') </b>: ' + (data?.introducer_name || 'N/A') + '</p>'
+                    );
+                }
+            }
+
             $('#saveConstructionButton').on('click', function(event) {
                 event.preventDefault();
                 var name = $('#construction_name').val();
@@ -1403,21 +1464,10 @@
                     });
                 }
 
-
-                function loadConstructions() {
-                    $.ajax({
-                        url: '/constructions/data',
-                        method: 'GET',
-                        success: function(data) {
-                            $('#constructionSelect').empty();
-                            $.each(data.data, function(index, item) {
-                                $('#constructionSelect').append(new Option(item.name,
-                                    item.id));
-                            });
-                        }
-                    });
-                }
             });
+
+
+
 
             function validateForm(form) {
                 var isValid = true;
@@ -1434,6 +1484,12 @@
             }
 
 
+            function formatDate(dateString) {
+                var parts = dateString.split('-');
+                return parts[2] + '-' + parts[1] + '-' + parts[0];
+            }
+
+
             function loadConstructions() {
                 $.ajax({
                     url: '/constructions/data',
@@ -1443,10 +1499,38 @@
                         $select.empty();
                         $select.append('<option value="">@lang('messages.select_construction')</option>');
 
-                        $.each(data.data, function(index, construction) {
-                            $select.append(
-                                `<option value="${construction.id}">${construction.name}</option>`
-                            );
+                        let constructionData = data.data.map(construction => ({
+                            id: construction.id,
+                            text: construction.name,
+                            description: construction.description,
+                            start_date: construction.start_date,
+                            end_date: construction.end_date,
+                            contact_name: construction.contact_name,
+                            introducer_name: construction.introducer_name,
+                            customer_id: construction.contact_id,
+                            introducer_id: construction.introducer_id,
+                        }));
+
+                        $select.select2({
+                            data: constructionData,
+                            placeholder: '@lang('messages.select_construction')',
+                            width: '100%',
+                            templateResult: function(data) {
+                                if (data.loading) {
+                                    return data.text;
+                                }
+                                var template = data.text;
+                                if (data.start_date && data.end_date) {
+                                    template += '  ( ' + formatDate(data.start_date) +
+                                        ' - ' +
+                                        formatDate(data
+                                            .end_date) + ' )';
+                                }
+                                return template;
+                            },
+                            templateSelection: function(data) {
+                                return data.text || data.id;
+                            }
                         });
 
                         $('#constructionModal').modal('show');
@@ -1456,21 +1540,6 @@
                     }
                 });
             }
-        });
-    </script>
-    <script>
-        function handleOkButtonClick() {
-            var selectedConstructionId = $('#constructionSelect').val();
-            $('#construction_id').val(selectedConstructionId);
-            $('#constructionModal').modal('hide');
-        }
-
-        $(document).ready(function() {
-            $('#constructionSelect').change(function() {
-                var selectedConstructionId = $(this).val();
-                $('#construction_id').val(selectedConstructionId);
-            });
-
 
         });
     </script>

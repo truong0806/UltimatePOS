@@ -195,6 +195,10 @@ class SellController extends Controller
                 $customer_id = request()->customer_id;
                 $sells->where('contacts.id', $customer_id);
             }
+            if (!empty(request()->construction_id)) {
+                $construction_id = request()->construction_id;
+                $sells->where('transactions.construction_id', $construction_id);
+            }
             if (!empty(request()->start_date) && !empty(request()->end_date)) {
                 $start = request()->start_date;
                 $end = request()->end_date;

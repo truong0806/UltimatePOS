@@ -2,10 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\BusinessLocation;
 use App\Construction;
 use App\Contact;
+use App\TransactionPayment;
+use App\User;
+use App\Utils\ContactUtil;
+use App\Utils\TransactionUtil;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
+use Spatie\Activitylog\Models\Activity;
 
 class ConstructionController extends Controller
 {
@@ -13,6 +19,48 @@ class ConstructionController extends Controller
     public function index()
     {
         return view('constructions.index');
+    }
+    public function getConstructionPayments($construction_id)
+    {
+        $transactionUtil = new \App\Utils\TransactionUtil();
+        $business_id = request()->session()->get('user.business_id');
+        if (request()->ajax()) {
+            $payments = TransactionPayment::leftjoin('transactions as t', 'transaction_payments.transaction_id', '=', 't.id')
+                ->leftjoin('transaction_payments as parent_payment', 'transaction_payments.parent_id', '=', 'parent_payment.id')
+                ->where('transaction_payments.business_id', $business_id)
+                ->whereNull('transaction_payments.parent_id')
+                ->with(['child_payments', 'child_payments.transaction'])
+                ->where('transaction_payments.construction_payment', $construction_id)
+                ->select(
+                    'transaction_payments.id',
+                    'transaction_payments.amount',
+                    'transaction_payments.is_return',
+                    'transaction_payments.method',
+                    'transaction_payments.paid_on',
+                    'transaction_payments.payment_ref_no',
+                    'transaction_payments.parent_id',
+                    'transaction_payments.transaction_no',
+                    'transaction_payments.construction_payment',
+                    't.invoice_no',
+                    't.ref_no',
+                    't.type as transaction_type',
+                    't.return_parent_id',
+                    't.id as transaction_id',
+                    'transaction_payments.cheque_number',
+                    'transaction_payments.card_transaction_number',
+                    'transaction_payments.bank_account_number',
+                    'transaction_payments.id as DT_RowId',
+                    'parent_payment.payment_ref_no as parent_payment_ref_no'
+                )
+                ->groupBy('transaction_payments.id')
+                ->orderByDesc('transaction_payments.paid_on')
+                ->paginate();
+
+            $payment_types = $transactionUtil->payment_types(null, true, $business_id);
+
+            return view('constructions.partials.construction_payments_tab')
+                ->with(compact('payments', 'payment_types'));
+        }
     }
     public function getConstructions()
     {
@@ -41,6 +89,12 @@ class ConstructionController extends Controller
             })
             ->editColumn('introducer_name', function ($row) {
                 return $row->introducer ? $row->introducer->name : 'none';
+            })
+            ->editColumn('contact_id', function ($row) {
+                return $row->contact ? $row->contact->id : 'none';
+            })
+            ->editColumn('introducer_id', function ($row) {
+                return $row->introducer ? $row->introducer->id : 'none';
             })
             ->editColumn('created_at', function ($row) {
                 return $row->created_at->format('Y-m-d H:i:s');
@@ -94,8 +148,52 @@ class ConstructionController extends Controller
     }
     public function show($id)
     {
-        $construction = Construction::findOrFail($id);
-        return view('constructions.show', compact('construction'));
+        $constructionUtil = new \App\Utils\ConstructionUtil();
+        $moduleUtil = new \App\Utils\ModuleUtil();
+        if (!auth()->user()->can('supplier.view') && !auth()->user()->can('customer.view') && !auth()->user()->can('customer.view_own') && !auth()->user()->can('supplier.view_own')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $business_id = request()->session()->get('user.business_id');
+        $construction = $constructionUtil->getConstructionInfo($business_id, $id);
+
+
+        $is_selected_contacts = User::isSelectedContacts(auth()->user()->id);
+        $user_contacts = [];
+        if ($is_selected_contacts) {
+            $user_contacts = auth()->user()->contactAccess->pluck('id')->toArray();
+        }
+
+        if (!auth()->user()->can('supplier.view') && auth()->user()->can('supplier.view_own')) {
+            if ($construction->created_by != auth()->user()->id & !in_array($construction->id, $user_contacts)) {
+                abort(403, 'Unauthorized action.');
+            }
+        }
+        if (!auth()->user()->can('customer.view') && auth()->user()->can('customer.view_own')) {
+            if ($construction->created_by != auth()->user()->id & !in_array($construction->id, $user_contacts)) {
+                abort(403, 'Unauthorized action.');
+            }
+        }
+
+        $construction_dropdown = Construction::forDropdown();
+
+        $business_locations = BusinessLocation::forDropdown($business_id, true);
+
+        //get construction view type : ledger, notes etc.
+        $view_type = request()->get('view');
+        if (is_null($view_type)) {
+            $view_type = 'sales';
+        }
+
+        $construction_view_tabs = $moduleUtil->getModuleData('get_contact_view_tabs');
+
+        // $activities = Activity::forSubject($construction)
+        //     ->with(['causer', 'subject'])
+        //     ->latest()
+        //     ->get();
+
+        return view('constructions.show')
+            ->with(compact('construction', 'construction_dropdown', 'business_locations', 'view_type', 'construction_view_tabs', 'activities'));
     }
     public function edit($id)
     {

@@ -418,24 +418,8 @@ class Transaction extends Model
         parent::boot();
 
         static::created(function ($transaction) {
-            $transaction->contact->updateCommission($transaction);
-        });
-
-        static::updated(function ($transaction) {
-            if ($transaction->isDirty('status') || $transaction->isDirty('payment_status')) {
-                if ($transaction->status == 'final' && $transaction->payment_status == 'paid') {
-
-                    $transaction->contact->updateCommission($transaction);
-                } elseif ($transaction->getOriginal('status') == 'final' && $transaction->getOriginal('payment_status') == 'paid') {
-                    $transaction->contact->updateCommission($transaction, true);
-                }
-            }
-        });
-
-        static::deleted(function ($transaction) {
-            if ($transaction->status == 'final' && $transaction->payment_status == 'paid') {
-                $transaction->contact->updateCommission($transaction, true);
-            }
+            $transactionUtil = new \App\Utils\TransactionUtil();
+            $transactionUtil->updateCommission($transaction, 'isCreate', null);
         });
     }
 }

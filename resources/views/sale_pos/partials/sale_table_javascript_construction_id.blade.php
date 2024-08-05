@@ -5,24 +5,24 @@
             $('#sell_table').empty(); // Clear the table content if necessary
         }
         //Date range as a button
-        $('#sell_list_filter_date_range').daterangepicker(
-            dateRangeSettings,
-            function(start, end) {
-                $('#sell_list_filter_date_range').val(start.format(moment_date_format) + ' ~ ' + end.format(
-                    moment_date_format));
-                sell_table.ajax.reload();
-            }
-        );
-        $('#sell_list_filter_date_range').on('cancel.daterangepicker', function(ev, picker) {
-            $('#sell_list_filter_date_range').val('');
-            sell_table.ajax.reload();
-        });
+        // $('#sell_list_filter_date_range').daterangepicker(
+        //     dateRangeSettings,
+        //     function(start, end) {
+        //         $('#sell_list_filter_date_range').val(start.format(moment_date_format) + ' ~ ' + end.format(
+        //             moment_date_format));
+        //         sell_table.ajax.reload();
+        //     }
+        // );
+        // $('#sell_list_filter_date_range').on('cancel.daterangepicker', function(ev, picker) {
+        //     $('#sell_list_filter_date_range').val('');
+        //     sell_table.ajax.reload();
+        // });
 
-        $(document).on('change',
-            '#sell_list_filter_location_id, #sell_list_filter_customer_id, #sell_list_filter_payment_status, #created_by, #sales_cmsn_agnt, #service_staffs, #shipping_status',
-            function() {
-                sell_table.ajax.reload();
-            });
+        // $(document).on('change',
+        //     '#sell_list_filter_location_id, #sell_list_filter_construction_id, #sell_list_filter_payment_status, #created_by, #sales_cmsn_agnt, #service_staffs, #shipping_status',
+        //     function() {
+        //         sell_table.ajax.reload();
+        //     });
 
         sell_table = $('#sell_table').DataTable({
             processing: true,
@@ -52,12 +52,7 @@
                     if ($('#sell_list_filter_location_id').length) {
                         d.location_id = $('#sell_list_filter_location_id').val();
                     }
-                    if ($('#sell_list_filter_customer_id').val()) {
-                        d.customer_id = $('#sell_list_filter_customer_id').val();
-                    }
-                    if ($('#sell_list_filter_construction_id').val()) {
-                        d.construction_id = $('#sell_list_filter_construction_id').val();
-                    }
+                    d.construction_id = $('#sell_list_filter_construction_id').val();
 
                     if ($('#sell_list_filter_payment_status').length) {
                         d.payment_status = $('#sell_list_filter_payment_status').val();
@@ -227,8 +222,5 @@
             }
         });
 
-        $('#only_subscriptions').on('ifChanged', function(event) {
-            sell_table.ajax.reload();
-        });
     });
 </script>

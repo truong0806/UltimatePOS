@@ -84,6 +84,7 @@ $(document).ready(function () {
         },
         templateResult: function (data) {
             var template = '';
+
             if (data.supplier_business_name) {
                 template += data.supplier_business_name + '<br>';
             }
@@ -118,6 +119,7 @@ $(document).ready(function () {
     });
     $('#customer_id').on('select2:select', function (e) {
         var data = e.params.data;
+        console.log('🚀 ~ data:', data);
         if (data.pay_term_number) {
             $('input#pay_term_number').val(data.pay_term_number);
         } else {
@@ -2578,6 +2580,7 @@ $(document).on('change', '#discount_type_modal, #discount_type', function () {
 });
 
 function update_shipping_address(data) {
+    console.log('🚀 ~ update_shipping_address ~ data:', data);
     if ($('#shipping_address_div').length) {
         var shipping_address = '';
         if (data.supplier_business_name) {
@@ -2623,6 +2626,13 @@ function update_shipping_address(data) {
         }
         var billing_address = address.join(', ');
         $('#billing_address_div').html(billing_address);
+    }
+    if (data.custom_field1) {
+        $('#commission_percentage_container').show();
+
+        $('#commission_percentage').html(data.custom_field1 + ' %');
+    } else {
+        $('#commission_percentage_container').hide();
     }
 
     if ($('#shipping_custom_field_1').length) {
@@ -2876,6 +2886,7 @@ function get_contact_due(id) {
         url: /get-contact-due/ + id,
         dataType: 'text',
         success: function (result) {
+            console.log('🚀 ~ get_contact_due ~ result:', result);
             if (result != '') {
                 $('.contact_due_text').find('span').text(result);
                 $('.contact_due_text').removeClass('hide');

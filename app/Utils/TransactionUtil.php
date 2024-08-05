@@ -163,11 +163,12 @@ class TransactionUtil extends Util
     public function updateSellTransaction($transaction_id, $business_id, $input, $invoice_total, $user_id, $uf_data = true, $change_invoice_number = true)
     {
         $transaction = $transaction_id;
-
+        $transaction_status_before = [];
         if (!is_object($transaction)) {
             $transaction = Transaction::where('id', $transaction_id)
                 ->where('business_id', $business_id)
                 ->firstOrFail();
+            $transaction_status_before = $transaction->status;
         }
 
         //Update invoice number if changed from draft to finalize or vice-versa
@@ -271,6 +272,7 @@ class TransactionUtil extends Util
 
         $transaction->fill($update_date);
         $transaction->update();
+        $transaction->transaction_status_before = $transaction_status_before;
 
         return $transaction;
     }
@@ -3032,11 +3034,13 @@ class TransactionUtil extends Util
      * @param  int  $transaction_id
      * @return string
      */
-    public function updatePaymentStatus($transaction_id, $final_amount = null)
+    public function updatePaymentStatus($transaction_id, $final_amount = null, $transaction_status_before = null)
     {
         $status = $this->calculatePaymentStatus($transaction_id, $final_amount);
-
         $transaction = Transaction::find($transaction_id);
+        if (!empty($transaction->construction_id) && !is_null($transaction_status_before)) {
+            $this->updateCommission($transaction, $transaction_status_before,  $status);
+        };
         $transaction->payment_status = $status;
         $transaction->save();
 
@@ -6419,5 +6423,38 @@ class TransactionUtil extends Util
         }
 
         return $registers;
+    }
+
+    public function updateCommission($transactionUpdate, $transaction_status_before, $paymentStatus)
+    {
+        $construction = \App\Construction::find($transactionUpdate->construction_id);
+        $contact = \App\Contact::find($construction->introducer_id);
+
+        if (is_null($contact->custom_field1) || is_null($transactionUpdate->construction_id)) {
+            return;
+        }
+
+        $commission = $transactionUpdate->total_before_tax * ($contact->custom_field1 / 100);
+
+        if ($transactionUpdate->status == 'final' && $paymentStatus == null && $transaction_status_before == 'isCreate') {
+            $contact->custom_field4 += $commission;
+        } elseif ($transactionUpdate->status == 'final' && $paymentStatus == 'paid') {
+            $contact->custom_field2 += $commission;
+            $contact->custom_field4 -= $commission;
+        } elseif ($transactionUpdate->status == 'draft'  && $paymentStatus == null) {
+            $contact->custom_field4 += $commission;
+        } elseif ($transactionUpdate->status == 'final'  && $paymentStatus == 'due') {
+            return;
+        } elseif ($transactionUpdate->status == 'draft'  && $paymentStatus == 'due') {
+            return;
+        } elseif ($transactionUpdate->status == 'final' && $transaction_status_before == 'isDeletePayment') {
+            $contact->custom_field2 -= $commission;
+            $contact->custom_field4 += $commission;
+        } elseif ($transactionUpdate->status == 'final' && $transaction_status_before == 'draft' && $paymentStatus == 'paid') {
+            $contact->custom_field2 -= $commission;
+            $contact->custom_field4 += $commission;
+        }
+
+        $contact->save();
     }
 }
