@@ -72,8 +72,7 @@ class ConstructionController extends Controller
                 $html .= '<button type="button" class="btn btn-info dropdown-toggle btn-xs" data-toggle="dropdown" aria-expanded="false">' . __('messages.actions') . '<span class="caret"></span><span class="sr-only">Toggle Dropdown</span></button>';
                 $html .= '<ul class="dropdown-menu dropdown-menu-left" role="menu">';
 
-                $html .= '<li><a href="' . action([\App\Http\Controllers\ConstructionController::class, 'view'], [$row->id]) . '" class="view-btn" data-id="' . $row->id . '"><i class="fa fa-eye"></i> ' . __('messages.view') . '</a></li>';
-
+                $html .= '<li><a href="' . route('constructions.show', [$row->id]) . '" class="view-construction" data-id="' . $row->id . '"><i class="fa fa-eye"></i> ' . __('messages.view') . '</a></li>';
                 $html .= '<li><a href="#" class="edit-btn" data-id="' . $row->id . '"><i class="glyphicon glyphicon-edit"></i> ' . __('messages.edit') . '</a></li>';
                 $html .= '<li><a href="' . route('constructions.destroy', [$row->id]) . '" class="delete-construction"><i class="fa fa-trash"></i> ' . __('messages.delete') . '</a></li>';
 
@@ -146,6 +145,66 @@ class ConstructionController extends Controller
 
         return redirect('/constructions');
     }
+
+
+    public function getLedger()
+    {
+        if (!auth()->user()->can('supplier.view') && !auth()->user()->can('customer.view') && !auth()->user()->can('supplier.view_own') && !auth()->user()->can('customer.view_own')) {
+            abort(403, 'Unauthorized action.');
+        }
+        $contactUtil = new \App\Utils\ContactUtil();
+        $transactionUtil = new \App\Utils\TransactionUtil();
+        $business_id = request()->session()->get('user.business_id');
+        $construction_id = request()->input('construction_id');
+
+        $is_admin = $contactUtil->is_admin(auth()->user());
+
+        $start_date = request()->start_date;
+        $end_date = request()->end_date;
+        $format = request()->format;
+        $location_id = request()->location_id;
+
+        $construction = Construction::find($construction_id);
+        $contact = Contact::find($construction->contact_id);
+
+        $line_details = $format == 'format_3' ? true : false;
+
+        $ledger_details = $transactionUtil->getLedgerConstructionDetails($construction_id, $contact, $start_date, $end_date, $format, $location_id, $line_details);
+
+        $location = null;
+        if (!empty($location_id)) {
+            $location = BusinessLocation::where('business_id', $business_id)->find($location_id);
+        }
+        if (request()->input('action') == 'pdf') {
+            $output_file_name = 'Ledger-' . str_replace(' ', '-', $construction->name) . '-' . $start_date . '-' . $end_date . '.pdf';
+            $for_pdf = true;
+            if ($format == 'format_2') {
+                $html = view('constructions.ledger_format_2')
+                    ->with(compact('ledger_details', 'construction', 'for_pdf', 'location'))->render();
+            } elseif ($format == 'format_3') {
+                $html = view('constructions.ledger_format_3')
+                    ->with(compact('ledger_details', 'construction', 'location', 'is_admin', 'for_pdf'))->render();
+            } else {
+                $html = view('constructions.ledger')
+                    ->with(compact('ledger_details', 'construction', 'for_pdf', 'location'))->render();
+            }
+
+            $mpdf = $this->getMpdf();
+            $mpdf->WriteHTML($html);
+            $mpdf->Output($output_file_name, 'I');
+        }
+
+        if ($format == 'format_2') {
+            return view('contact.ledger_format_2')
+                ->with(compact('ledger_details', 'contact', 'location'));
+        } elseif ($format == 'format_3') {
+            return view('contact.ledger_format_3')
+                ->with(compact('ledger_details', 'contact', 'location', 'is_admin'));
+        } else {
+            return view('contact.ledger')
+                ->with(compact('ledger_details', 'contact', 'location', 'is_admin'));
+        }
+    }
     public function show($id)
     {
         $constructionUtil = new \App\Utils\ConstructionUtil();
@@ -158,9 +217,9 @@ class ConstructionController extends Controller
         $construction = $constructionUtil->getConstructionInfo($business_id, $id);
 
 
-        $is_selected_contacts = User::isSelectedContacts(auth()->user()->id);
+        $is_selected_construction = User::isSelectedContacts(auth()->user()->id);
         $user_contacts = [];
-        if ($is_selected_contacts) {
+        if ($is_selected_construction) {
             $user_contacts = auth()->user()->contactAccess->pluck('id')->toArray();
         }
 
@@ -182,7 +241,7 @@ class ConstructionController extends Controller
         //get construction view type : ledger, notes etc.
         $view_type = request()->get('view');
         if (is_null($view_type)) {
-            $view_type = 'sales';
+            $view_type = 'ledger';
         }
 
         $construction_view_tabs = $moduleUtil->getModuleData('get_contact_view_tabs');
@@ -193,7 +252,7 @@ class ConstructionController extends Controller
         //     ->get();
 
         return view('constructions.show')
-            ->with(compact('construction', 'construction_dropdown', 'business_locations', 'view_type', 'construction_view_tabs', 'activities'));
+            ->with(compact('construction', 'construction_dropdown', 'business_id', 'view_type', 'construction_view_tabs', 'activities'));
     }
     public function edit($id)
     {
@@ -245,21 +304,6 @@ class ConstructionController extends Controller
 
     public function view($id)
     {
-        $construction = Construction::find($id);
-
-        if (!$construction) {
-            return response()->json(['error' => 'Construction not found'], 404);
-        }
-
-        return response()->json([
-            'name' => $construction->name,
-            'budget' => number_format($construction->budget, 2),
-            'start_date' => $construction->start_date,
-            'end_date' => $construction->end_date,
-            'budget' => number_format($construction->budget, 2),
-            'customer_name' => $construction->customer ? $construction->customer->name : 'N/A',
-            'introducer_name' => $construction->introducer ? $construction->introducer->name : 'N/A',
-        ]);
     }
 
     public function destroy($id)

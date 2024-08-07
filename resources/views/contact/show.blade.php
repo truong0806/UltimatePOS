@@ -515,6 +515,7 @@
                 url: url,
                 dataType: 'html',
                 success: function(result) {
+                    console.log("🚀 ~ get_contact_payments ~ result:", result)
                     $('#contact_payments_div').fadeOut(400, function() {
                         $('#contact_payments_div')
                             .html(result).fadeIn(400);

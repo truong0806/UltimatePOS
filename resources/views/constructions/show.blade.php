@@ -24,22 +24,22 @@
                     padding-left: 10px;
                     padding-right: 10px;
                 }
-            </style>
+            </style>111
             <div style="width: 100%;">
                 <div class="info_col">
-                    @include('contact.contact_basic_info')
+                    @include('constructions.construction_basic_info')
                 </div>
                 <div class="info_col">
-                    @include('contact.contact_more_info')
+                    @include('constructions.construction_more_info')
                 </div>
-                @if ($construction->type != 'customer')
+                {{-- @if ($construction->type != 'customer')
                     <div class="info_col">
-                        @include('contact.contact_tax_info')
+                        @include('constructions.construction_tax_info')
                     </div>
                 @endif
                 <div class="info_col">
-                    @include('contact.contact_payment_info')
-                </div>
+                    @include('constructions.construction_payment_info')
+                </div> --}}
             </div>
         </div>
         <input type="hidden" id="sell_list_filter_construction_id" value="{{ $construction->id }}">
@@ -49,16 +49,23 @@
             <div class="col-md-12">
                 <div class="box box-solid">
                     <div class="box-body">
-                        @include('contact.partials.contact_info_tab')
+                        @include('constructions.partials.constructions_info_tab')
                     </div>
                 </div>
             </div>
         </div>
-        {{ $construction->id }}
         <div class="row">
             <div class="col-md-12">
                 <div class="nav-tabs-custom">
                     <ul class="nav nav-tabs nav-justified">
+                        <li
+                            class="
+                        @if (!empty($view_type) && $view_type == 'ledger') active
+                        @else
+                            '' @endif">
+                            <a href="#ledger_tab" data-toggle="tab" aria-expanded="true"><i class="fas fa-scroll"
+                                    aria-hidden="true"></i> @lang('lang_v1.ledger')</a>
+                        </li>
                         <li
                             class="
                     @if (!empty($view_type) && $view_type == 'sales') active
@@ -80,7 +87,13 @@
                     </ul>
 
                     <div class="tab-content">
-
+                        <div class="tab-pane
+                        @if (!empty($view_type) && $view_type == 'ledger') active
+                        @else
+                            '' @endif"
+                            id="ledger_tab">
+                            @include('constructions.partials.ledger_tab')
+                        </div>
 
                         <div class="tab-pane 
                         @if (!empty($view_type) && $view_type == 'sales') active
@@ -129,6 +142,10 @@
                         moment_date_format));
                 }
             );
+            $('#ledger_date_range, #ledger_location').change(function() {
+                get_construction_ledger();
+            });
+            get_construction_ledger();
 
 
 
@@ -230,27 +247,69 @@
             });
         });
 
-        $(document).on('shown.bs.modal', '#edit_ledger_discount_modal', function(e) {
-            $('#edit_ledger_discount_modal').find('#edit_discount_date').datetimepicker({
-                format: moment_date_format + ' ' + moment_time_format,
-                ignoreReadonly: true,
+        function get_construction_ledger() {
+
+            var start_date = '';
+            var end_date = '';
+            var transaction_types = $('input.transaction_types:checked').map(function(i, e) {
+                return e.value
+            }).toArray();
+            var show_payments = $('input#show_payments').is(':checked');
+            var location_id = $('#ledger_location').val();
+
+            if ($('#ledger_date_range').val()) {
+                start_date = $('#ledger_date_range').data('daterangepicker').startDate.format('YYYY-MM-DD');
+                end_date = $('#ledger_date_range').data('daterangepicker').endDate.format('YYYY-MM-DD');
+            }
+
+            var format = $('input[name="ledger_format"]:checked').val();
+            var data = {
+                start_date: start_date,
+                transaction_types: transaction_types,
+                show_payments: show_payments,
+                end_date: end_date,
+                format: format
+            }
+            $.ajax({
+                url: '/constructions/ledger?construction_id={{ $construction->id }}',
+                data: data,
+                dataType: 'html',
+                success: function(result) {
+                    $('#construction_ledger_div')
+                        .html(result);
+                    __currency_convert_recursively($('#construction_ledger_div'));
+
+                    $('#ledger_table').DataTable({
+                        searching: false,
+                        ordering: false,
+                        paging: false,
+                        dom: 't'
+                    });
+                },
             });
-        })
+        }
+
+        // $(document).on('shown.bs.modal', '#edit_ledger_discount_modal', function(e) {
+        //     $('#edit_ledger_discount_modal').find('#edit_discount_date').datetimepicker({
+        //         format: moment_date_format + ' ' + moment_time_format,
+        //         ignoreReadonly: true,
+        //     });
+        // })
 
 
 
 
 
         $(document).one('shown.bs.tab', 'a[href="#payments_tab"]', function() {
-            get_contact_payments();
+            get_constraction_payments();
         })
 
         $(document).on('click', '#contact_payments_pagination a', function(e) {
             e.preventDefault();
-            get_contact_payments($(this).attr('href'));
+            get_constraction_payments($(this).attr('href'));
         })
 
-        function get_contact_payments(url = null) {
+        function get_constraction_payments(url = null) {
             if (!url) {
                 url =
                     "{{ action([\App\Http\Controllers\ConstructionController::class, 'getConstructionPayments'], [$construction->id]) }}";

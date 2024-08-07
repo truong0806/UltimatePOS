@@ -22,7 +22,6 @@ use Illuminate\Http\Request;
 use Spatie\Activitylog\Models\Activity;
 use Yajra\DataTables\Facades\DataTables;
 use App\Events\ContactCreatedOrModified;
-use Illuminate\Support\Facades\Validator;
 
 class ContactController extends Controller
 {
@@ -94,6 +93,36 @@ class ContactController extends Controller
 
         return view('contact.index')
             ->with(compact('type', 'reward_enabled', 'customer_groups', 'users'));
+    }
+
+    public function getCustomersById($id)
+    {
+        if (!auth()->user()->can('supplier.view') && !auth()->user()->can('customer.view') && !auth()->user()->can('customer.view_own') && !auth()->user()->can('supplier.view_own')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $business_id = request()->session()->get('user.business_id');
+        $contact = $this->contactUtil->getContactInfo($business_id, $id);
+
+        $is_selected_contacts = User::isSelectedContacts(auth()->user()->id);
+        $user_contacts = [];
+        if ($is_selected_contacts) {
+            $user_contacts = auth()->user()->contactAccess->pluck('id')->toArray();
+        }
+
+        if (!auth()->user()->can('supplier.view') && auth()->user()->can('supplier.view_own')) {
+            if ($contact->created_by != auth()->user()->id & !in_array($contact->id, $user_contacts)) {
+                abort(403, 'Unauthorized action.');
+            }
+        }
+
+        if (!auth()->user()->can('customer.view') && auth()->user()->can('customer.view_own')) {
+            if ($contact->created_by != auth()->user()->id & !in_array($contact->id, $user_contacts)) {
+                abort(403, 'Unauthorized action.');
+            }
+        }
+
+        return json_encode($contact);
     }
 
     /**
@@ -372,7 +401,6 @@ class ContactController extends Controller
                 'return_due',
                 '<span class="return_due" data-orig-value="{{$total_sell_return - $sell_return_paid}}" data-highlight=false>@format_currency($total_sell_return - $sell_return_paid)</span>'
             )
-
             ->addColumn(
                 'action',
                 function ($row) {
@@ -464,18 +492,6 @@ class ContactController extends Controller
 
                 return $html;
             })
-            ->editColumn('custom_field2', function ($row) {
-
-                return $this->transactionUtil->num_f($row->custom_field2, true);
-            })
-            ->editColumn('custom_field4', function ($row) {
-
-                return $this->transactionUtil->num_f($row->custom_field4, true);
-            })
-            ->editColumn('custom_field3', function ($row) {
-                $contact = Contact::find($row->custom_field3);
-                return $contact ? $contact->name . '(' . $contact->contact_id . ')' : null;
-            })
             ->editColumn('balance', function ($row) {
                 $html = '<span data-orig-value="' . $row->balance . '">' . $this->transactionUtil->num_f($row->balance, true) . '</span>';
 
@@ -507,7 +523,6 @@ class ContactController extends Controller
 
                 return $name;
             })
-
             ->editColumn('total_rp', '{{$total_rp ?? 0}}')
             ->editColumn('created_at', '{{@format_date($created_at)}}')
             ->removeColumn('total_invoice')
@@ -572,14 +587,14 @@ class ContactController extends Controller
 
         $customer_groups = CustomerGroup::forDropdown($business_id);
         $selected_type = request()->type;
-        $introducer = Contact::contactDropdown($business_id);
+
         $module_form_parts = $this->moduleUtil->getModuleData('contact_form_part');
 
         //Added check because $users is of no use if enable_contact_assign if false
         $users = config('constants.enable_contact_assign') ? User::forDropdown($business_id, false, false, false, true) : [];
 
         return view('contact.create')
-            ->with(compact('types', 'introducer', 'customer_groups', 'selected_type', 'module_form_parts', 'users'));
+            ->with(compact('types', 'customer_groups', 'selected_type', 'module_form_parts', 'users'));
     }
 
     /**
@@ -602,24 +617,9 @@ class ContactController extends Controller
             }
 
             $input = $request->only([
-                'custom_field3', 'custom_field1',
                 'type', 'supplier_business_name',
                 'prefix', 'first_name', 'middle_name', 'last_name', 'tax_number', 'pay_term_number', 'pay_term_type', 'mobile', 'landline', 'alternate_number', 'city', 'state', 'country', 'address_line_1', 'address_line_2', 'customer_group_id', 'zip_code', 'contact_id', 'custom_field1', 'custom_field2', 'custom_field3', 'custom_field4', 'custom_field5', 'custom_field6', 'custom_field7', 'custom_field8', 'custom_field9', 'custom_field10', 'email', 'shipping_address', 'position', 'dob', 'shipping_custom_field_details', 'assigned_to_users',
             ]);
-
-            if (isset($input['custom_field1'])) {
-                $input['custom_field1'] = (float) $input['custom_field1'];
-            }
-
-            $validator = Validator::make($request->all(), [
-                'custom_field1' => 'required|numeric|min:0|max:100',
-            ]);
-            if ($validator->fails()) {
-                return  $output = [
-                    'success' => false,
-                    'msg' => __('lang_v1.contact_custom_field1') . ' ' . __('lang_v1.validate_custom_field1'),
-                ];
-            }
 
             $name_array = [];
 
@@ -735,36 +735,7 @@ class ContactController extends Controller
             ->get();
 
         return view('contact.show')
-            ->with(compact('contact', 'introducer', 'reward_enabled', 'contact_dropdown', 'business_locations', 'view_type', 'contact_view_tabs', 'activities'));
-    }
-
-    public function getCustomersById($id)
-    {
-        if (!auth()->user()->can('supplier.view') && !auth()->user()->can('customer.view') && !auth()->user()->can('customer.view_own') && !auth()->user()->can('supplier.view_own')) {
-            abort(403, 'Unauthorized action.');
-        }
-
-        $business_id = request()->session()->get('user.business_id');
-        $contact = $this->contactUtil->getContactInfo($business_id, $id);
-
-        $is_selected_contacts = User::isSelectedContacts(auth()->user()->id);
-        $user_contacts = [];
-        if ($is_selected_contacts) {
-            $user_contacts = auth()->user()->contactAccess->pluck('id')->toArray();
-        }
-
-        if (!auth()->user()->can('supplier.view') && auth()->user()->can('supplier.view_own')) {
-            if ($contact->created_by != auth()->user()->id & !in_array($contact->id, $user_contacts)) {
-                abort(403, 'Unauthorized action.');
-            }
-        }
-        if (!auth()->user()->can('customer.view') && auth()->user()->can('customer.view_own')) {
-            if ($contact->created_by != auth()->user()->id & !in_array($contact->id, $user_contacts)) {
-                abort(403, 'Unauthorized action.');
-            }
-        }
-
-        return json_encode($contact);
+            ->with(compact('contact', 'reward_enabled', 'contact_dropdown', 'business_locations', 'view_type', 'contact_view_tabs', 'activities'));
     }
 
     /**
@@ -799,7 +770,7 @@ class ContactController extends Controller
             }
 
             $customer_groups = CustomerGroup::forDropdown($business_id);
-            $introducer = Contact::contactDropdown($business_id)->except($contact->id);
+
             $ob_transaction = Transaction::where('contact_id', $id)
                 ->where('type', 'opening_balance')
                 ->first();
@@ -819,7 +790,7 @@ class ContactController extends Controller
             $users = config('constants.enable_contact_assign') ? User::forDropdown($business_id, false, false, false, true) : [];
 
             return view('contact.edit')
-                ->with(compact('contact', 'types', 'introducer', 'customer_groups', 'opening_balance', 'users'));
+                ->with(compact('contact', 'types', 'customer_groups', 'opening_balance', 'users'));
         }
     }
 
@@ -1019,8 +990,7 @@ class ContactController extends Controller
                 'export_custom_field_3',
                 'export_custom_field_4',
                 'export_custom_field_5',
-                'export_custom_field_6',
-                'custom_field1'
+                'export_custom_field_6'
             );
 
             if (request()->session()->get('business.enable_rp') == 1) {
@@ -1680,11 +1650,18 @@ class ContactController extends Controller
         if (request()->ajax()) {
             $payments = TransactionPayment::leftjoin('transactions as t', 'transaction_payments.transaction_id', '=', 't.id')
                 ->leftjoin('transaction_payments as parent_payment', 'transaction_payments.parent_id', '=', 'parent_payment.id')
+                ->leftJoin(
+                    'constructions AS cs',
+                    'transaction_payments.construction_payment',
+                    '=',
+                    'cs.id'
+                )
                 ->where('transaction_payments.business_id', $business_id)
                 ->whereNull('transaction_payments.parent_id')
                 ->with(['child_payments', 'child_payments.transaction'])
                 ->where('transaction_payments.payment_for', $contact_id)
                 ->select(
+                    'transaction_payments.construction_payment',
                     'transaction_payments.id',
                     'transaction_payments.amount',
                     'transaction_payments.is_return',
@@ -1702,7 +1679,8 @@ class ContactController extends Controller
                     'transaction_payments.card_transaction_number',
                     'transaction_payments.bank_account_number',
                     'transaction_payments.id as DT_RowId',
-                    'parent_payment.payment_ref_no as parent_payment_ref_no'
+                    'parent_payment.payment_ref_no as parent_payment_ref_no',
+                    DB::raw('IFNULL(cs.name, "") as constructions_name')
                 )
                 ->groupBy('transaction_payments.id')
                 ->orderByDesc('transaction_payments.paid_on')

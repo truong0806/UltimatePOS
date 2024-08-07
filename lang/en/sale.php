@@ -12,6 +12,8 @@ return [
     */
 
     'sale' => 'Sell',
+    'total_individual_paid' => 'Total individual paid',
+    'total_construction_paid' => 'Total construction paid',
     'sells' => 'Sales',
     'list_sale' => 'List Sales',
     'add_sale' => 'Add Sale',

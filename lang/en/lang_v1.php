@@ -2,8 +2,13 @@
 
 return [
     'enable_editing_product_from_purchase' => 'Enable editing product price from purchase screen',
+    'balance_individual_due' => 'Balance individual due',
+    'balance_construction_due' => 'Balance construction due',
     'sales_commission_agent' => 'Sales Commission Agent',
+    'total_individual_invoice' => 'Total individual invoice',
+    'total_construction_invoice' => 'Total construction invoice',
     'sales_commission_agents' => 'Sales Commission Agents',
+    'total_construction_invoice_paid' => 'Total construction paid',
     'disable' => 'Disable',
     'construction' => "Construction",
     'contact_name' => "Customer name",

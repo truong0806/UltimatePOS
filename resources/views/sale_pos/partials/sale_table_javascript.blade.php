@@ -55,6 +55,7 @@
                     if ($('#sell_list_filter_customer_id').val()) {
                         d.customer_id = $('#sell_list_filter_customer_id').val();
                     }
+
                     if ($('#sell_list_filter_construction_id').val()) {
                         d.construction_id = $('#sell_list_filter_construction_id').val();
                     }
@@ -94,6 +95,10 @@
                 {
                     data: 'transaction_date',
                     name: 'transaction_date'
+                },
+                {
+                    data: 'constructions_name',
+                    name: 'constructions_name'
                 },
                 {
                     data: 'invoice_no',

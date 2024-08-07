@@ -4,6 +4,7 @@ return [
     'introducer' => 'Introducer',
     'view_construction' => 'View construction',
     'customer' => 'Customer',
+    'contruction_name' => 'Contruction mame',
     'add_construction' => 'Add Construction',
     'name' => 'Name',
     'description' => 'Description',

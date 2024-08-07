@@ -105,16 +105,17 @@ Route::middleware(['setData'])->group(function () {
 Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 'AdminSidebarMenu', 'CheckUserLogin'])->group(function () {
 
     Route::get('/constructions', [ConstructionController::class, 'index'])->name('constructions.index');
+    Route::get('/constructions/ledger', [ConstructionController::class, 'getLedger'])->name('constructions.getLedger');
     Route::get('/constructions/data', [ConstructionController::class, 'getConstructions']);
     Route::get('/constructions/create', [ConstructionController::class, 'showCreateForm']);
     Route::post('/constructions', [ConstructionController::class, 'createConstruction']);
     Route::put('/constructions/{id}', [ConstructionController::class, 'update'])->name('constructions.update');
     Route::delete('/constructions/{id}', [ConstructionController::class, 'deleteConstruction']);
-    Route::get('constructions/{id}', [ConstructionController::class, 'view'])->name('constructions.view');
+    Route::get('constructions/{id}', [ConstructionController::class, 'show'])->name('constructions.show');
+
     Route::get('/constructions/{id}/edit', [ConstructionController::class, 'edit'])->name('constructions.edit');
-    Route::get('/constructions/{id}', [ConstructionController::class, 'show'])->name('constructions.show');
     Route::get('/constructions/payments/{construction_id}', [ConstructionController::class, 'getConstructionPayments']);
-   
+
     Route::delete('/constructions/{id}', [ConstructionController::class, 'destroy'])->name('constructions.destroy');
 
     Route::get('pos/payment/{id}', [SellPosController::class, 'edit'])->name('edit-pos-payment');

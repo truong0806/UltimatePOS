@@ -3,6 +3,7 @@ id="contact_payments_table">
     <thead>
         <tr>
             <th>@lang('lang_v1.paid_on')</th>
+            <th>@lang('construction.contruction_name')</th>
             <th>@lang('purchase.ref_no')</th>
             <th>@lang('sale.amount')</th>
             <th>@lang('lang_v1.payment_method')</th>

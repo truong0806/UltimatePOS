@@ -5154,10 +5154,16 @@ class TransactionUtil extends Util
 
         //Get payment totals before start date
         $prev_payments = $this->__paymentQuery($contact_id, $start, null, $location_id)
-            ->select('transaction_payments.*', 'bl.name as location_name', 't.type as transaction_type', 'is_advance')
+            ->select('transaction_payments.*', DB::raw('IFNULL(cs.name, "") as constructions_name'), 'bl.name as location_name', 't.type as transaction_type', 'is_advance')
             ->get();
 
         $prev_total_invoice_paid = $prev_payments->where('transaction_type', 'sell')->where('is_return', 0)->sum('amount');
+        $prev_total_construction_invoice_paid = $prev_payments
+            ->where('transaction_type', 'sell')
+            ->where('is_return', 0)
+            ->whereNotNull('construction_payment')
+            ->sum('amount');
+
         $prev_total_ob_paid = $prev_payments->where('transaction_type', 'opening_balance')->where('is_return', 0)->sum('amount');
         $prev_total_sell_change_return = $prev_payments->where('transaction_type', 'sell')->where('is_return', 1)->sum('amount');
         $prev_total_sell_change_return = !empty($prev_total_sell_change_return) ? $prev_total_sell_change_return : 0;
@@ -5198,6 +5204,349 @@ class TransactionUtil extends Util
         }
         //Get transaction totals between dates
         $transaction_query = $this->__transactionQuery($contact_id, $start, $end, $location_id)
+            ->with(['location'])
+            ->select(
+                'transactions.*',
+                DB::raw('IFNULL(cs.name, "") as constructions_name')
+            );
+
+        if ($format == 'format_2') {
+            $transaction_query->leftjoin('transaction_payments as tp', 'tp.transaction_id', '=', 'transactions.id')
+                ->addSelect(DB::raw('COALESCE(SUM(tp.amount), 0) as total_paid'))
+                ->groupBy('transactions.id');
+        }
+
+        $transactions = $transaction_query->get();
+        $transaction_types = Transaction::transactionTypes();
+        $ledger = [];
+
+        $opening_balance = 0;
+        $opening_balance_paid = 0;
+        $ledger_discount = 0;
+
+        foreach ($transactions as $transaction) {
+            if ($transaction->type == 'opening_balance') {
+                //Skip opening balance, it will be added in the end
+                $opening_balance += $transaction->final_total;
+
+                continue;
+            }
+
+            if ($transaction->type == 'ledger_discount') {
+                $ledger_discount += $transaction->final_total;
+            }
+
+            $temp_array = [
+                'date' => $transaction->transaction_date,
+                'contruction_name' => $transaction->constructions_name ??  $transaction->constructions_name . ' (' . $transaction->construction_id . ') ',
+                'ref_no' => in_array($transaction->type, ['sell', 'sell_return']) ? $transaction->invoice_no : $transaction->ref_no,
+                'type' => $transaction_types[$transaction->type],
+                'location' => $transaction->location->name ?? '',
+                'payment_status' => !in_array($transaction->type, ['ledger_discount']) ? __('lang_v1.' . $transaction->payment_status) : '',
+                'total' => '',
+                'payment_method' => '',
+                'debit' => in_array($transaction->type, ['sell', 'purchase_return']) || ($transaction->sub_type == 'purchase_discount') ? $transaction->final_total : '',
+                'credit' => in_array($transaction->type, ['purchase', 'sell_return']) || ($transaction->sub_type == 'sell_discount') ? $transaction->final_total : '',
+                'others' => $transaction->additional_notes,
+                'transaction_id' => $transaction->id,
+                'transaction_type' => $transaction->type,
+            ];
+
+            if ($format == 'format_2') {
+                $temp_array['final_total'] = $transaction->final_total;
+                $temp_array['total_due'] = $transaction->final_total - $transaction->total_paid;
+                $temp_array['due_date'] = $transaction->due_date;
+                $temp_array['payment_status'] = $transaction->payment_status;
+            }
+
+            if ($format == 'format_3') {
+                foreach ($transaction->sell_lines as $key => $value) {
+                    if (!empty($value->sub_unit_id)) {
+                        $formated_sell_line = $this->recalculateSellLineTotals($business_id, $value);
+                        $transaction->sell_lines[$key] = $formated_sell_line;
+                    }
+                }
+                $productUtil = new \App\Utils\ProductUtil();
+                foreach ($transaction->purchase_lines as $key => $value) {
+                    if (!empty($value->sub_unit_id)) {
+                        $formated_purchase_line = $productUtil->changePurchaseLineUnit($value, $business_id);
+                        $transaction->purchase_lines[$key] = $formated_purchase_line;
+                    }
+                }
+
+                $temp_array['sell_lines'] = $transaction->sell_lines;
+                $temp_array['purchase_lines'] = $transaction->purchase_lines;
+            }
+
+            $ledger[] = $temp_array;
+        }
+
+        $invoice_sum = $transactions->where('type', 'sell')->sum('final_total');
+        $purchase_sum = $transactions->where('type', 'purchase')->sum('final_total');
+
+        $invoice_construction_sum = $transactions->where('type', 'sell')->whereNotNull('construction_id')->sum('final_total');
+        $purchase_construction_sum = $transactions->where('type', 'purchase')->whereNotNull('construction_id')->sum('final_total');
+
+        $sell_return_sum = $transactions->where('type', 'sell_return')->sum('final_total');
+        $purchase_return_sum = $transactions->where('type', 'purchase_return')->sum('final_total');
+        $sell_construction_return_sum = $transactions->where('type', 'sell_return')->whereNotNull('construction_id')->sum('final_total');
+        $purchase_construction_return_sum = $transactions->where('type', 'purchase_return')->whereNotNull('construction_id')->sum('final_total');
+
+        //Get payment totals between dates
+        if ($format == 'format_1' || $format == 'format_3') {
+            $payments = $this->__paymentQuery($contact_id, $start, $end, $location_id)
+                ->select('transaction_payments.*', DB::raw('IFNULL(cs.name, "") as constructions_name'), 'bl.name as location_name', 't.type as transaction_type', 't.ref_no', 't.invoice_no')
+                ->get();
+        } else {
+            $payments = [];
+        }
+
+        $paymentTypes = $this->payment_types(null, true, $business_id);
+
+        $total_reverse_payment = 0;
+
+        foreach ($payments as $payment) {
+            if ($payment->transaction_type == 'opening_balance') {
+                $opening_balance_paid += $payment->amount;
+            }
+
+            if ($contact->type == 'customer' && $payment->is_advance == 0 && empty($payment->transaction_id) && $payment->payment_type == 'debit') {
+                $total_reverse_payment += $payment->amount;
+            }
+            if ($contact->type == 'supplier' && $payment->is_advance == 0 && empty($payment->transaction_id) && $payment->payment_type == 'credit') {
+                $total_reverse_payment += $payment->amount;
+            }
+
+            //Hide all the adjusted payments because it has already been summed as advance payment
+            if (!empty($payment->parent_id)) {
+                continue;
+            }
+
+            $ref_no = in_array($payment->transaction_type, ['sell', 'sell_return']) ? $payment->invoice_no : $payment->ref_no;
+            $note = $payment->note;
+            if (!empty($ref_no)) {
+                $note .= '<small>' . __('account.payment_for') . ': ' . $ref_no . '</small>';
+            }
+
+            if ($payment->is_advance == 1) {
+                $note .= '<small>' . __('lang_v1.advance_payment') . '</small>';
+            }
+
+            if ($payment->is_return == 1) {
+                $note .= '<small>(' . __('lang_v1.change_return') . ')</small>';
+            }
+
+            $ledger[] = [
+                'date' => $payment->paid_on,
+                'contruction_name' => $payment->constructions_name  ?? $payment->constructions_name . ' (' . $payment->construction_payment . ')',
+                'ref_no' => $payment->payment_ref_no,
+                'type' => $transaction_types['payment'],
+                'location' => $payment->location_name,
+                'payment_status' => '',
+                'total' => '',
+                'payment_method' => !empty($paymentTypes[$payment->method]) ? $paymentTypes[$payment->method] : '',
+                'payment_method_key' => $payment->method,
+                'debit' => in_array($payment->transaction_type, ['purchase', 'sell_return']) || ($payment->is_advance == 1 && $contact->type == 'supplier') || (in_array($payment->transaction_type, ['sell', 'purchase_return', 'opening_balance']) && $payment->is_return == 1) || $payment->payment_type == 'debit' ? $payment->amount : '',
+                'credit' => (in_array($payment->transaction_type, ['sell', 'purchase_return', 'opening_balance']) || ($payment->is_advance == 1 && in_array($contact->type, ['customer', 'both']))) && $payment->is_return == 0 || $payment->payment_type == 'credit' ? $payment->amount : '',
+                'others' => $note,
+            ];
+        }
+
+        $total_excess_advance_payment = $this->__paymentQuery($contact_id, $start, $end, $location_id)
+            ->select(
+                DB::raw('(transaction_payments.amount - COALESCE((SELECT SUM(amount) from transaction_payments as TP where TP.parent_id = transaction_payments.id), 0)) as amount')
+            )
+            ->where('is_advance', 1)
+            ->get()
+            ->sum('amount');
+        $total_advance_payment = $this->__paymentQuery($contact_id, $start, $end, $location_id)
+            ->select(
+                DB::raw('SUM(transaction_payments.amount) as amount')
+            )
+            ->where('method', 'advance')
+            ->get()
+            ->sum('amount');
+
+        $total_invoice_paid = !empty($payments) ? $payments->where('transaction_type', 'sell')->where('is_return', 0)->sum('amount') : 0;
+        $total_construction_invoice_paid = !empty($payments) ? $payments->where('transaction_type', 'sell')->where('is_return', 0)->whereNotNull('construction_payment')->sum('amount') : 0;
+
+
+        $total_sell_change_return = !empty($payments) ? $payments->where('transaction_type', 'sell')->where('is_return', 1)->sum('amount') : 0;
+        $total_sell_change_return = !empty($total_sell_change_return) ? $total_sell_change_return : 0;
+
+        $total_construction_sell_change_return = !empty($payments) ? $payments->where('transaction_type', 'sell')->where('is_return', 1)->whereNotNull('construction_payment')->sum('amount') : 0;
+        $total_construction_sell_change_return = !empty($total_construction_sell_change_return) ? $total_construction_sell_change_return : 0;
+
+        $total_invoice_paid -= $total_sell_change_return;
+        $total_purchase_paid = !empty($payments) ? $payments->where('transaction_type', 'purchase')->where('is_return', 0)->sum('amount') : 0;
+
+        $total_construction_invoice_paid -= $total_construction_sell_change_return;
+        $total_construction_purchase_paid = !empty($payments) ? $payments->where('transaction_type', 'purchase')->where('is_return', 0)->whereNotNull('construction_payment')->sum('amount') : 0;
+
+        $total_sell_return_paid = !empty($payments) ? $payments->where('transaction_type', 'sell_return')->sum('amount') : 0;
+        $total_construction_sell_return_paid = !empty($payments) ? $payments->where('transaction_type', 'sell_return')->whereNotNull('construction_payment')->sum('amount') : 0;
+
+        $total_purchase_return_paid = !empty($payments) ? $payments->where('transaction_type', 'purchase_return')->sum('amount') : 0;
+        $total_construction_purchase_return_paid = !empty($payments) ? $payments->where('transaction_type', 'purchase_return')->whereNotNull('construction_payment')->sum('amount') : 0;
+
+        $total_invoice_paid += $opening_balance_paid;
+        $total_construction_invoice_paid += $opening_balance_paid;
+
+        $start_date = $this->format_date($start);
+        $end_date = $this->format_date($end);
+
+        $total_invoice = $invoice_sum - $sell_return_sum;
+        $total_purchase = $purchase_sum - $purchase_return_sum;
+
+        $total_construction_invoice = $invoice_construction_sum - $sell_construction_return_sum;
+        $total_construction_purchase = $purchase_construction_sum - $purchase_construction_return_sum;
+
+        $opening_balance_due = $opening_balance;
+
+        $total_paid = $total_invoice_paid + $total_purchase_paid - $total_sell_return_paid - $total_purchase_return_paid + $total_excess_advance_payment - $total_advance_payment;
+        $total_construction_paid = $total_construction_invoice_paid + $total_construction_purchase_paid - $total_construction_sell_return_paid - $total_construction_purchase_return_paid + $total_excess_advance_payment - $total_advance_payment;
+
+        $total_transactions_paid = $total_invoice_paid + $total_purchase_paid - $total_sell_return_paid - $total_purchase_return_paid;
+        $total_construction_transactions_paid = $total_construction_invoice_paid + $total_construction_purchase_paid - $total_construction_sell_return_paid - $total_construction_purchase_return_paid;
+
+        $curr_due = $total_invoice + $total_purchase - $total_transactions_paid + $beginning_balance + $opening_balance_due;
+        $curr_construction_due = $total_construction_invoice + $total_construction_purchase - $total_construction_transactions_paid + $beginning_balance + $opening_balance_due;
+
+        //Sort by date
+        if (!empty($ledger)) {
+            usort($ledger, function ($a, $b) {
+                $t1 = strtotime($a['date']);
+                $t2 = strtotime($b['date']);
+
+                return $t1 - $t2;
+            });
+        }
+
+        $total_opening_bal = $beginning_balance + $opening_balance_due;
+        if ($format != 'format_2') {
+            //Add Beginning balance & openining balance to ledger
+            $ledger = array_merge([[
+                'date' => $start,
+                'ref_no' => '',
+                'type' => __('lang_v1.opening_balance'),
+                'location' => '',
+                'payment_status' => '',
+                'total' => '',
+                'payment_method' => '',
+                'debit' => $contact->type == 'customer' ? abs($total_opening_bal) : '',
+                'credit' => $contact->type == 'supplier' ? abs($total_opening_bal) : '',
+                'others' => '',
+                'final_total' => abs($total_opening_bal),
+                'total_due' => 0,
+                'due_date' => null,
+            ]], $ledger);
+        }
+
+        $bal = 0;
+        foreach ($ledger as $key => $val) {
+            $credit = !empty($val['credit']) ? $val['credit'] : 0;
+            $debit = !empty($val['debit']) ? $val['debit'] : 0;
+
+            //Skip advance method payment because it is already added in customer advance payment
+            if (!empty($val['payment_method_key']) && $val['payment_method_key'] == 'advance') {
+                $credit = 0;
+                $debit = 0;
+            }
+
+            $bal += ($credit - $debit);
+            $balance = $this->num_f(abs($bal));
+
+            if ($bal < 0) {
+                $balance .= ' ' . __('lang_v1.dr');
+            } elseif ($bal > 0) {
+                $balance .= ' ' . __('lang_v1.cr');
+            }
+
+            $ledger[$key]['balance'] = $balance;
+        }
+
+        $output = [
+            'ledger' => $ledger,
+            'start_date' => $start_date,
+            'end_date' => $end_date,
+            'total_invoice' => $total_invoice,
+            'total_individual_invoice' => $total_invoice - $total_construction_invoice,
+            'beginning_balance' => $beginning_balance + $opening_balance_due,
+            'total_construction_invoice' => $total_construction_invoice,
+            'balance_due' => $curr_due,
+            'total_purchase' => $total_purchase,
+            'total_paid' => $total_paid,
+            'balance_due_construction' => $curr_construction_due,
+            'balance_individual_due' => $curr_due - $curr_construction_due,
+            'total_construction_purchase' => $total_construction_purchase,
+            'total_construction_paid' => $total_construction_paid,
+            'total_individual_purchase' => $total_purchase - $total_construction_purchase,
+            'total_individual_paid' => $total_paid - $total_construction_paid,
+            'total_reverse_payment' => $total_reverse_payment,
+            'ledger_discount' => $ledger_discount,
+        ];
+
+        return $output;
+    }
+
+    public function getLedgerConstructionDetails($construction_id, $contact, $start, $end, $format = 'format_1', $location_id = null, $line_details = false)
+    {
+        $business_id = request()->session()->get('user.business_id');
+        //Get sum of totals before start date
+        $previous_transaction_sums = $this->__transactionConstructionQuery($construction_id, $contact->id, $start, null, $location_id)
+            ->select(
+                DB::raw("SUM(IF(type = 'purchase', final_total, 0)) as total_purchase"),
+                DB::raw("SUM(IF(type = 'sell' AND status = 'final', final_total, 0)) as total_invoice"),
+                DB::raw("SUM(IF(type = 'sell_return', final_total, 0)) as total_sell_return"),
+                DB::raw("SUM(IF(type = 'purchase_return', final_total, 0)) as total_purchase_return"),
+                DB::raw("SUM(IF(type = 'opening_balance', final_total, 0)) as total_opening_balance"),
+                DB::raw("SUM(IF(type = 'ledger_discount', final_total, 0)) as total_ledger_discount")
+            )->first();
+
+        //Get payment totals before start date
+        $prev_payments = $this->__paymentConstructionQuery($construction_id, $contact->id,  $start, null, $location_id)
+            ->select('transaction_payments.*', 'bl.name as location_name', 't.type as transaction_type', 'is_advance')
+            ->get();
+
+        $prev_total_invoice_paid = $prev_payments->where('transaction_type', 'sell')->where('is_return', 0)->sum('amount');
+        $prev_total_ob_paid = $prev_payments->where('transaction_type', 'opening_balance')->where('is_return', 0)->sum('amount');
+        $prev_total_sell_change_return = $prev_payments->where('transaction_type', 'sell')->where('is_return', 1)->sum('amount');
+        $prev_total_sell_change_return = !empty($prev_total_sell_change_return) ? $prev_total_sell_change_return : 0;
+        $prev_total_invoice_paid -= $prev_total_sell_change_return;
+        $prev_total_purchase_paid = $prev_payments->where('transaction_type', 'purchase')->where('is_return', 0)->sum('amount');
+        $prev_total_sell_return_paid = $prev_payments->where('transaction_type', 'sell_return')->sum('amount');
+        $prev_total_purchase_return_paid = $prev_payments->where('transaction_type', 'purchase_return')->sum('amount');
+        //$prev_total_advance_payment = $prev_payments->where('is_advance', 1)->sum('amount');
+        $prev_total_advance_payment = $this->__paymentConstructionQuery($construction_id, $contact->id, $start, null, $location_id)
+            ->select(
+                'bl.name as location_name',
+                't.type as transaction_type',
+                'is_advance',
+                'transaction_payments.id',
+                DB::raw('(transaction_payments.amount - COALESCE((SELECT SUM(amount) from transaction_payments as TP where TP.parent_id = transaction_payments.id), 0)) as amount')
+            )
+            ->where('is_advance', 1)
+            ->get()
+            ->sum('amount');
+
+        $total_prev_paid = $prev_total_invoice_paid + $prev_total_purchase_paid - $prev_total_sell_return_paid - $prev_total_purchase_return_paid + $prev_total_ob_paid + $prev_total_advance_payment;
+
+        $total_prev_invoice = $previous_transaction_sums->total_purchase + $previous_transaction_sums->total_invoice - $previous_transaction_sums->total_sell_return - $previous_transaction_sums->total_purchase_return + $previous_transaction_sums->total_opening_balance - $previous_transaction_sums->total_ledger_discount;
+        //$total_prev_paid = $prev_payments_sum->total_paid;
+        $beginning_balance = $total_prev_invoice - $total_prev_paid;
+
+        $with = ['location'];
+        if ($line_details) {
+            $with = [
+                'location', 'sell_lines', 'sell_lines.sub_unit', 'sell_lines.product',
+                'sell_lines.variations', 'sell_lines.product.unit', 'sell_lines.variations.product_variation',
+                'sell_lines.line_tax', 'purchase_lines', 'purchase_lines.product', 'purchase_lines.variations',
+                'purchase_lines.variations.product_variation', 'purchase_lines.line_tax',
+                'purchase_lines.product.unit', 'purchase_lines.product.unit.sub_units',
+            ];
+        }
+        //Get transaction totals between dates
+        $transaction_query = $this->__transactionConstructionQuery($construction_id, $contact->id, $start, $end, $location_id)
             ->with(['location'])
             ->select('transactions.*');
 
@@ -5278,7 +5627,7 @@ class TransactionUtil extends Util
 
         //Get payment totals between dates
         if ($format == 'format_1' || $format == 'format_3') {
-            $payments = $this->__paymentQuery($contact_id, $start, $end, $location_id)
+            $payments = $this->__paymentConstructionQuery($construction_id, $contact->id, $start, $end, $location_id)
                 ->select('transaction_payments.*', 'bl.name as location_name', 't.type as transaction_type', 't.ref_no', 't.invoice_no')
                 ->get();
         } else {
@@ -5295,9 +5644,6 @@ class TransactionUtil extends Util
             }
 
             if ($contact->type == 'customer' && $payment->is_advance == 0 && empty($payment->transaction_id) && $payment->payment_type == 'debit') {
-                $total_reverse_payment += $payment->amount;
-            }
-            if ($contact->type == 'supplier' && $payment->is_advance == 0 && empty($payment->transaction_id) && $payment->payment_type == 'credit') {
                 $total_reverse_payment += $payment->amount;
             }
 
@@ -5335,14 +5681,14 @@ class TransactionUtil extends Util
             ];
         }
 
-        $total_excess_advance_payment = $this->__paymentQuery($contact_id, $start, $end, $location_id)
+        $total_excess_advance_payment = $this->__paymentQuery($contact->id, $start, $end, $location_id)
             ->select(
                 DB::raw('(transaction_payments.amount - COALESCE((SELECT SUM(amount) from transaction_payments as TP where TP.parent_id = transaction_payments.id), 0)) as amount')
             )
             ->where('is_advance', 1)
             ->get()
             ->sum('amount');
-        $total_advance_payment = $this->__paymentQuery($contact_id, $start, $end, $location_id)
+        $total_advance_payment = $this->__paymentQuery($contact->id, $start, $end, $location_id)
             ->select(
                 DB::raw('SUM(transaction_payments.amount) as amount')
             )
@@ -5451,7 +5797,44 @@ class TransactionUtil extends Util
         $transaction_type_keys = array_keys(Transaction::transactionTypes());
 
         $query = Transaction::where('transactions.contact_id', $contact_id)
+            ->leftJoin(
+                'constructions AS cs',
+                'transactions.construction_id',
+                '=',
+                'cs.id'
+            )
             ->where('transactions.business_id', $business_id)
+            ->where('transactions.status', '!=', 'draft')
+            ->whereIn('transactions.type', $transaction_type_keys);
+
+        if (!empty($start) && !empty($end)) {
+            $query->whereDate(
+                'transactions.transaction_date',
+                '>=',
+                $start
+            )
+                ->whereDate('transactions.transaction_date', '<=', $end)->get();
+        }
+
+        if (!empty($location_id)) {
+            $query->where('transactions.location_id', $location_id);
+        }
+
+        if (!empty($start) && empty($end)) {
+            $query->whereDate('transactions.transaction_date', '<', $start);
+        }
+
+        return $query;
+    }
+
+    private function __transactionConstructionQuery($construction_id, $contact_id, $start, $end = null, $location_id = null)
+    {
+        $business_id = request()->session()->get('user.business_id');
+        $transaction_type_keys = array_keys(Transaction::transactionTypes());
+
+        $query = Transaction::where('transactions.construction_id', $construction_id)
+            ->where('transactions.business_id', $business_id)
+            ->where('transactions.contact_id', $contact_id)
             ->where('transactions.status', '!=', 'draft')
             ->whereIn('transactions.type', $transaction_type_keys);
 
@@ -5488,8 +5871,49 @@ class TransactionUtil extends Util
             '=',
             't.id'
         )
+            ->leftJoin(
+                'constructions AS cs',
+                'transaction_payments.construction_payment',
+                '=',
+                'cs.id'
+            )
             ->leftJoin('business_locations as bl', 't.location_id', '=', 'bl.id')
             ->where('transaction_payments.payment_for', $contact_id);
+        //->whereNotNull('transaction_payments.transaction_id');
+        //->whereNull('transaction_payments.parent_id');
+
+        if (!empty($start) && !empty($end)) {
+            $query->whereDate('paid_on', '>=', $start)
+                ->whereDate('paid_on', '<=', $end);
+        }
+
+        if (!empty($start) && empty($end)) {
+            $query->whereDate('paid_on', '<', $start);
+        }
+
+        if (!empty($location_id)) {
+            //if location id present get all transaction with the location id and opening balance
+            $query->where(function ($q) use ($location_id) {
+                $q->where('transaction_payments.is_advance', 1)
+                    ->orWhere('t.location_id', $location_id);
+            });
+        }
+
+        return $query;
+    }
+    private function __paymentConstructionQuery($construction_id, $contact_id, $start, $end = null, $location_id = null)
+    {
+        $business_id = request()->session()->get('user.business_id');
+
+        $query = TransactionPayment::leftJoin(
+            'transactions as t',
+            'transaction_payments.transaction_id',
+            '=',
+            't.id'
+        )
+            ->leftJoin('business_locations as bl', 't.location_id', '=', 'bl.id')
+            ->where('transaction_payments.payment_for', $contact_id)
+            ->where('transaction_payments.construction_payment', $construction_id);
         //->whereNotNull('transaction_payments.transaction_id');
         //->whereNull('transaction_payments.parent_id');
 

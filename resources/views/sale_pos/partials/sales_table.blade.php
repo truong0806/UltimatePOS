@@ -6,6 +6,7 @@
         <tr>
             <th>@lang('messages.action')</th>
             <th>@lang('messages.date')</th>
+            <th>@lang('construction.contruction_name')</th>
             <th>@lang('sale.invoice_no')</th>
             <th>@lang('sale.customer_name')</th>
             <th>@lang('lang_v1.contact_no')</th>
@@ -19,7 +20,7 @@
             <th>@lang('lang_v1.shipping_status')</th>
             <th>@lang('lang_v1.total_items')</th>
             <th>@lang('lang_v1.types_of_service')</th>
-            <th>{{ $custom_labels['types_of_service']['custom_field_1'] ?? __('lang_v1.service_custom_field_1' )}}</th>
+            <th>{{ $custom_labels['types_of_service']['custom_field_1'] ?? __('lang_v1.service_custom_field_1') }}</th>
             <th>@lang('lang_v1.added_by')</th>
             <th>@lang('sale.sell_note')</th>
             <th>@lang('sale.staff_note')</th>
@@ -32,6 +33,7 @@
         <tr class="bg-gray font-17 footer-total text-center">
             <td colspan="6"><strong>@lang('sale.total'):</strong></td>
             <td class="footer_payment_status_count"></td>
+            <td></td>
             <td class="payment_method_count"></td>
             <td class="footer_sale_total"></td>
             <td class="footer_total_paid"></td>

@@ -249,19 +249,6 @@
                 });
             });
         });
-        $(document).on('click', '.view-construction', function(e) {
-            e.preventDefault();
-
-            var url = $(this).attr('href');
-            $.get(url, function(data) {
-                // Update modal title and content
-                $('#constructionModal .modal-title').text('Construction Details');
-                $('#constructionModal .modal-body').html(data);
-                $('#constructionModal').modal('show');
-            }).fail(function(xhr, status, error) {
-                console.log(xhr.responseText);
-            });
-        });
     </script>
     <script>
         $(document).ready(function() {
