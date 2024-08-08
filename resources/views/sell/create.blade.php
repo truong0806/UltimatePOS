@@ -219,15 +219,14 @@
                                 {{ $walk_in_customer['name'] ?? '' }},<br>
                                 {{ $walk_in_customer['shipping_address'] ?? '' }}
                             </div>
-                            <div id="commission_percentage_container"
-                                style="display: {{ !empty($walk_in_customer['custom_field1']) ? 'block' : 'none' }}">
+                            {{-- <div id="commission_percentage_container" style="display: hidden">
                                 <strong>
                                     @lang('lang_v1.commission_percentage'):
                                 </strong>
                                 <div id="commission_percentage">
                                     {{ $walk_in_customer['custom_field1'] ?? '' }}
                                 </div>
-                            </div>
+                            </div> --}}
 
                         </small>
                     </div>
@@ -1273,6 +1272,12 @@
         <script src="{{ asset('js/restaurant.js?v=' . $asset_v) }}"></script>
     @endif
     <script type="text/javascript">
+        $('#is_construction').change(function() {
+            if (!this.checked) {
+                $('#construction_id').val(null);
+                $('#constructionDetails').html('');
+            }
+        });
         $(document).ready(function() {
             $('#status').change(function() {
                 if ($(this).val() == 'final') {
@@ -1348,11 +1353,10 @@
     </script>
     <script>
         $(document).ready(function() {
-
             $('#is_construction').change(function() {
                 if ($(this).is(':checked')) {
-                    $('#constructionModal').modal('show');
                     loadConstructions();
+                    $('#constructionModal').modal('show');
 
                 } else {
                     $('#constructionModal').modal('hide');
@@ -1374,8 +1378,6 @@
 
                 $('#commission_percentage_container').hide();
             });
-
-
 
             function setCustomerId(customer_id) {
                 $.ajax({

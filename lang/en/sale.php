@@ -45,6 +45,7 @@ return [
     'no_recent_transactions' => 'No Recent Transactions',
     'final' => 'Final',
     'invoice_no' => 'Invoice No.',
+    'total_return' => 'Total return',
     'customer_name' => 'Customer name',
     'payment_status' => 'Payment Status',
     'status' => 'Status',

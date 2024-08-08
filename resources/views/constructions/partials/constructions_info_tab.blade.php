@@ -26,11 +26,11 @@
             </p>
 
         </div> --}}
-        @if ($contact->type != 'customer')
+        {{-- @if ($contact->type != 'customer')
             <div class="col-sm-3 mt-56">
                 @include('contact.contact_tax_info')
             </div>
-        @endif
+        @endif --}}
 
         {{-- <div class="col-sm-3 mt-56">
             @include('contact.contact_payment_info')

@@ -195,13 +195,13 @@ class ConstructionController extends Controller
         }
 
         if ($format == 'format_2') {
-            return view('contact.ledger_format_2')
+            return view('constructions.ledger_format_2')
                 ->with(compact('ledger_details', 'contact', 'location'));
         } elseif ($format == 'format_3') {
-            return view('contact.ledger_format_3')
+            return view('constructions.ledger_format_3')
                 ->with(compact('ledger_details', 'contact', 'location', 'is_admin'));
         } else {
-            return view('contact.ledger')
+            return view('constructions.ledger')
                 ->with(compact('ledger_details', 'contact', 'location', 'is_admin'));
         }
     }

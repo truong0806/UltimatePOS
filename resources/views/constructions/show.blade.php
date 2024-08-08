@@ -24,7 +24,7 @@
                     padding-left: 10px;
                     padding-right: 10px;
                 }
-            </style>111
+            </style>
             <div style="width: 100%;">
                 <div class="info_col">
                     @include('constructions.construction_basic_info')
@@ -325,6 +325,20 @@
                 },
             });
         }
+
+        $(document).on('click', '#print_ledger_pdf', function() {
+            var start_date = $('#ledger_date_range').data('daterangepicker').startDate.format('YYYY-MM-DD');
+            var end_date = $('#ledger_date_range').data('daterangepicker').endDate.format('YYYY-MM-DD');
+
+            var format = $('input[name="ledger_format"]:checked').val();
+
+            var location_id = $('#ledger_location').val();
+
+            var url = $(this).data('href') + '&start_date=' + start_date + '&end_date=' + end_date + '&format=' +
+                format + '&location_id=' + location_id;
+            window.open(url);
+        });
+
     </script>
     @include('sale_pos.partials.sale_table_javascript')
     <script src="{{ asset('js/payment.js?v=' . $asset_v) }}"></script>

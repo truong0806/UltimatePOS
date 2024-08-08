@@ -24,8 +24,8 @@
                 ]) !!}
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="form-group">
+        <div class="col-md-6 hidden">
+            <div class="form-group block-none">
                 <label>@lang('lang_v1.ledger_format')</label>
                 <div class="btn-group" data-toggle="buttons">
                     <label class="btn btn-default active">
@@ -50,9 +50,9 @@
 
             </div>
         </div>
-        <div class="col-md-2 text-right">
+        <div class="col-md-6 text-right hidden">
             <button
-                data-href="{{ action([\App\Http\Controllers\ConstructionController::class, 'getLedger']) }}?contact_id={{ $contact->id }}&action=pdf"
+                data-href="{{ action([\App\Http\Controllers\ConstructionController::class, 'getLedger']) }}?contact_id={{ $construction->id }}&action=pdf"
                 class="btn btn-default btn-xs" id="print_ledger_pdf"><i class="fas fa-file-pdf"></i></button>
 
             <button type="button" class="btn btn-default btn-xs" id="send_ledger"><i

@@ -110,7 +110,7 @@ class TransactionPaymentController extends Controller
 
                 $inputs['business_id'] = $request->session()->get('business.id');
                 $inputs['document'] = $this->transactionUtil->uploadFile($request, 'document', 'documents');
-               
+
                 //Pay from advance balance
                 $payment_amount = $inputs['amount'];
                 $contact_balance = !empty($transaction->contact) ? $transaction->contact->balance : 0;
@@ -403,12 +403,24 @@ class TransactionPaymentController extends Controller
             $business_id = request()->session()->get('user.business_id');
 
             $transaction = Transaction::where('business_id', $business_id)
+                ->leftJoin(
+                    'constructions AS cs',
+                    'transactions.construction_id',
+                    '=',
+                    'cs.id'
+                )
+                ->select('transactions.*',  DB::raw('IFNULL(cs.name, null) as constructions_name'),)
                 ->with(['contact', 'location'])
                 ->findOrFail($transaction_id);
             if ($transaction->payment_status != 'paid') {
                 $show_advance = in_array($transaction->type, ['sell', 'purchase']) ? true : false;
                 $payment_types = $this->transactionUtil->payment_types($transaction->location, $show_advance);
-
+                if (!empty($transaction->construction_id)) {
+                    $payment_types = array_filter($payment_types, function ($item) {
+                        return strtolower($item) !== 'advance';
+                    });
+                    $transaction->contact->balance = null;
+                }
                 $paid_amount = $this->transactionUtil->getTotalPaid($transaction_id);
                 $amount = $transaction->final_total - $paid_amount;
                 if ($amount < 0) {

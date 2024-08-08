@@ -2581,6 +2581,8 @@ $(document).on('change', '#discount_type_modal, #discount_type', function () {
 
 function update_shipping_address(data) {
     console.log('🚀 ~ update_shipping_address ~ data:', data);
+    var construction_id = $('#construction_id').val();
+    console.log('🚀 ~ update_shipping_address ~ construction_id:', construction_id);
     if ($('#shipping_address_div').length) {
         var shipping_address = '';
         if (data.supplier_business_name) {
@@ -2627,10 +2629,13 @@ function update_shipping_address(data) {
         var billing_address = address.join(', ');
         $('#billing_address_div').html(billing_address);
     }
-    if (data.custom_field1) {
-        $('#commission_percentage_container').show();
-
-        $('#commission_percentage').html(data.custom_field1 + ' %');
+    if (!construction_id) {
+        if (data.custom_field1) {
+            $('#commission_percentage_container').show();
+            $('#commission_percentage').html(data.custom_field1 + ' %');
+        } else {
+            $('#commission_percentage_container').hide();
+        }
     } else {
         $('#commission_percentage_container').hide();
     }

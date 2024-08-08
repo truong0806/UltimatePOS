@@ -121,7 +121,7 @@
             <thead>
                 <tr class="row-border blue-heading">
                     <th width="18%" class="text-center">@lang('lang_v1.date')</th>
-                    <th width="9%" class="text-center">@lang('construction.contruction_name')</th>
+                    <th width="9%" class="text-center">@lang('construction.construction_name')</th>
                     <th width="9%" class="text-center">@lang('purchase.ref_no')</th>
                     <th width="8%" class="text-center">@lang('lang_v1.type')</th>
                     <th width="10%" class="text-center">@lang('sale.location')</th>
@@ -138,7 +138,7 @@
                 @foreach ($ledger_details['ledger'] as $data)
                     <tr @if (!empty($for_pdf) && $loop->iteration % 2 == 0) class="odd" @endif>
                         <td class="row-border">{{ @format_datetime($data['date']) }}</td>
-                        <td>{{ $data['contruction_name'] }}</td>
+                        <td>{{ $data['construction_name'] }}</td>
                         <td>{{ $data['ref_no'] }}</td>
                         <td>{{ $data['type'] }}</td>
                         <td>{{ $data['location'] }}</td>

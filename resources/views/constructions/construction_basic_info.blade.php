@@ -2,24 +2,32 @@
 <h3 class="profile-username">
     <i class="fa-solid fa-traffic-cone fa-2xs"></i>
     {{ $construction->name }}
-
+    <br>
+    <small class="text-muted">
+        {{ $construction->description }}<br>
+    </small>
 </h3><br>
-<strong><i class="fa fa-map-marker margin-r-5"></i> @lang('business.address')</strong>
+<strong><i class="fa-regular fa-user fa-3xs"></i> @lang('construction.customer')</strong>
 <p class="text-muted">
-    {!! $contact->contact_address !!}
+    {{ $construction->customer_name . ' - ' }}<a data-href="" target="_blank"
+        href="/UltimatePOS/public/contacts/{{ $construction->contact_id }}">{{ $construction->customer_code }}</a>
+    <br>
 </p>
-@if ($contact->supplier_business_name)
-    <strong><i class="fa fa-briefcase margin-r-5"></i>
-        @lang('business.business_name')</strong>
-    <p class="text-muted">
-        {{ $contact->supplier_business_name }}
-    </p>
-@endif
+<strong><i class="fa-regular fa-user fa-3xs"></i> @lang('construction.introducer')</strong>
+<p class="text-muted">
+    {{ $construction->introducer_name . ' - ' }}<a data-href="" target="_blank"
+        href="/UltimatePOS/public/contacts/{{ $construction->introducer_id }}">{{ $construction->introducer_code }}</a>
+    <br>
+</p>
+<strong><i class="fa-regular fa-calendar-days fa-3xs"></i> @lang('construction.start_date')</strong>
+<p class="text-muted">
+    {{ $construction->start_date }}<br>
+</p>
+<strong><i class="fa-regular fa-calendar-days fa-3xs"></i> @lang('construction.end_date')</strong>
+<p class="text-muted">
+    {{ $construction->end_date . ' - ' }} <br>
+</p>
 
-<strong><i class="fa fa-mobile margin-r-5"></i> @lang('contact.mobile')</strong>
-<p class="text-muted">
-    {{ $contact->mobile }}
-</p>
 @if ($contact->landline)
     <strong><i class="fa fa-phone margin-r-5"></i> @lang('contact.landline')</strong>
     <p class="text-muted">

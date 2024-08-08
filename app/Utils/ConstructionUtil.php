@@ -33,6 +33,8 @@ class ConstructionUtil extends Util
             ->select(
                 DB::raw('IFNULL(introducer.name, "") as introducer_name'),
                 DB::raw('IFNULL(customer.name, "") as customer_name'),
+                DB::raw('IFNULL(customer.contact_id, "") as customer_code'),
+                DB::raw('IFNULL(introducer.contact_id, "") as introducer_code'),
                 DB::raw("SUM(IF(t.type = 'purchase', final_total, 0)) as total_purchase"),
                 DB::raw("SUM(IF(t.type = 'sell' AND t.status = 'final', final_total, 0)) as total_invoice"),
                 DB::raw("SUM(IF(t.type = 'purchase', (SELECT SUM(amount) FROM transaction_payments WHERE transaction_payments.transaction_id=t.id), 0)) as purchase_paid"),

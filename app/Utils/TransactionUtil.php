@@ -3109,8 +3109,10 @@ class TransactionUtil extends Util
         $due_transactions = Transaction::where('contact_id', $parent_payment->payment_for)
             ->whereIn('type', $types)
             ->where('payment_status', '!=', 'paid')
+            ->whereNull('construction_id')
             ->orderBy('transaction_date', 'asc')
             ->get();
+
 
         $total_amount = $parent_payment->amount;
 
@@ -4847,6 +4849,8 @@ class TransactionUtil extends Util
             ->with(['sell_lines', 'payment_lines'])
             ->first();
 
+        $this->updateCommission($transaction, 'isDelete', null);
+
         if (!empty($transaction)) {
             $log_properities = [
                 'id' => $transaction->id,
@@ -5238,7 +5242,7 @@ class TransactionUtil extends Util
 
             $temp_array = [
                 'date' => $transaction->transaction_date,
-                'contruction_name' => $transaction->constructions_name ??  $transaction->constructions_name . ' (' . $transaction->construction_id . ') ',
+                'construction_name' => $transaction->constructions_name ??  $transaction->constructions_name . ' (' . $transaction->construction_id . ') ',
                 'ref_no' => in_array($transaction->type, ['sell', 'sell_return']) ? $transaction->invoice_no : $transaction->ref_no,
                 'type' => $transaction_types[$transaction->type],
                 'location' => $transaction->location->name ?? '',
@@ -5288,8 +5292,9 @@ class TransactionUtil extends Util
         $purchase_construction_sum = $transactions->where('type', 'purchase')->whereNotNull('construction_id')->sum('final_total');
 
         $sell_return_sum = $transactions->where('type', 'sell_return')->sum('final_total');
-        $purchase_return_sum = $transactions->where('type', 'purchase_return')->sum('final_total');
         $sell_construction_return_sum = $transactions->where('type', 'sell_return')->whereNotNull('construction_id')->sum('final_total');
+
+        $purchase_return_sum = $transactions->where('type', 'purchase_return')->sum('final_total');
         $purchase_construction_return_sum = $transactions->where('type', 'purchase_return')->whereNotNull('construction_id')->sum('final_total');
 
         //Get payment totals between dates
@@ -5338,7 +5343,7 @@ class TransactionUtil extends Util
 
             $ledger[] = [
                 'date' => $payment->paid_on,
-                'contruction_name' => $payment->constructions_name  ?? $payment->constructions_name . ' (' . $payment->construction_payment . ')',
+                'construction_name' => $payment->constructions_name  ?? $payment->constructions_name . ' (' . $payment->construction_payment . ')',
                 'ref_no' => $payment->payment_ref_no,
                 'type' => $transaction_types['payment'],
                 'location' => $payment->location_name,
@@ -5469,18 +5474,18 @@ class TransactionUtil extends Util
             'ledger' => $ledger,
             'start_date' => $start_date,
             'end_date' => $end_date,
+            'beginning_balance' => $beginning_balance + $opening_balance_due,
             'total_invoice' => $total_invoice,
             'total_individual_invoice' => $total_invoice - $total_construction_invoice,
-            'beginning_balance' => $beginning_balance + $opening_balance_due,
             'total_construction_invoice' => $total_construction_invoice,
             'balance_due' => $curr_due,
-            'total_purchase' => $total_purchase,
-            'total_paid' => $total_paid,
-            'balance_due_construction' => $curr_construction_due,
+            'balance_construction_due' => $curr_construction_due,
             'balance_individual_due' => $curr_due - $curr_construction_due,
-            'total_construction_purchase' => $total_construction_purchase,
-            'total_construction_paid' => $total_construction_paid,
+            'total_purchase' => $total_purchase,
             'total_individual_purchase' => $total_purchase - $total_construction_purchase,
+            'total_construction_purchase' => $total_construction_purchase,
+            'total_paid' => $total_paid,
+            'total_construction_paid' => $total_construction_paid,
             'total_individual_paid' => $total_paid - $total_construction_paid,
             'total_reverse_payment' => $total_reverse_payment,
             'ledger_discount' => $ledger_discount,
@@ -5622,7 +5627,10 @@ class TransactionUtil extends Util
 
         $invoice_sum = $transactions->where('type', 'sell')->sum('final_total');
         $purchase_sum = $transactions->where('type', 'purchase')->sum('final_total');
+
         $sell_return_sum = $transactions->where('type', 'sell_return')->sum('final_total');
+        $sell_construction_return_sum = $transactions->where('type', 'sell_return')->whereNotNull('construction_id')->sum('final_total');
+
         $purchase_return_sum = $transactions->where('type', 'purchase_return')->sum('final_total');
 
         //Get payment totals between dates
@@ -5713,7 +5721,7 @@ class TransactionUtil extends Util
         $total_purchase = $purchase_sum - $purchase_return_sum;
 
         $opening_balance_due = $opening_balance;
-        $total_paid = $total_invoice_paid + $total_purchase_paid - $total_sell_return_paid - $total_purchase_return_paid + $total_excess_advance_payment - $total_advance_payment;
+        $total_paid = $total_invoice_paid + $total_purchase_paid - $total_sell_return_paid - $total_purchase_return_paid;
 
         $total_transactions_paid = $total_invoice_paid + $total_purchase_paid - $total_sell_return_paid - $total_purchase_return_paid;
 
@@ -5778,6 +5786,7 @@ class TransactionUtil extends Util
             'end_date' => $end_date,
             'total_invoice' => $total_invoice,
             'total_purchase' => $total_purchase,
+            'total_return' => $sell_construction_return_sum,
             'beginning_balance' => $beginning_balance + $opening_balance_due,
             'balance_due' => $curr_due,
             'total_paid' => $total_paid,
@@ -6434,6 +6443,8 @@ class TransactionUtil extends Util
         //Distribute above payment among unpaid transactions
         if (!$is_reverse) {
             $excess_amount = $this->payAtOnce($parent_payment, $due_payment_type);
+            $parent_payment->advance_balance = $excess_amount;
+            $parent_payment->save();
         }
         //Update excess amount
         if (!empty($excess_amount)) {
@@ -6449,6 +6460,7 @@ class TransactionUtil extends Util
             'discount_type' => $input['discount_type'] ?? 'fixed',
             'discount_amount' => $input['discount_amount'] ?? 0,
         ];
+        $construction_id = $input['construction_id'];
 
         $business = Business::with(['currency'])->findOrFail($business_id);
 
@@ -6470,6 +6482,7 @@ class TransactionUtil extends Util
             ->first();
 
         $sell_return_data = [
+            'construction_id' => $construction_id,
             'invoice_no' => $input['invoice_no'] ?? null,
             'discount_type' => $discount['discount_type'],
             'discount_amount' => $uf_number ? $this->num_uf($discount['discount_amount']) : $discount['discount_amount'],
@@ -6607,7 +6620,7 @@ class TransactionUtil extends Util
         $receipt_printer_type = $location_details->receipt_printer_type;
 
         //Get receipt details
-        $receipt_details = $this->getReceiptDetails($transaction_id, $transaction->location_id, $invoice_layout, $business_details, $location_details, $receipt_printer_type);
+        $receipt_details = $this->getReceiptDetails($transaction_id, $transaction->location_id, $invoice_layout, $business_details, $location_details, null, $receipt_printer_type);
         $currency_details = [
             'symbol' => $business_details->currency_symbol,
             'thousand_separator' => $business_details->thousand_separator,
@@ -6849,7 +6862,7 @@ class TransactionUtil extends Util
         return $registers;
     }
 
-    public function updateCommission($transactionUpdate, $transaction_status_before, $paymentStatus)
+    public function updateCommission($transactionUpdate, $transaction_status_before, $paymentStatus = null)
     {
         $construction = \App\Construction::find($transactionUpdate->construction_id);
         $contact = \App\Contact::find($construction->introducer_id);
@@ -6860,23 +6873,27 @@ class TransactionUtil extends Util
 
         $commission = $transactionUpdate->total_before_tax * ($contact->custom_field1 / 100);
 
-        if ($transactionUpdate->status == 'final' && $paymentStatus == null && $transaction_status_before == 'isCreate') {
+        if ($transactionUpdate->status == 'final') {
+            if ($paymentStatus === null && $transaction_status_before == 'isCreate') {
+                $contact->custom_field4 += $commission;
+            } elseif ($paymentStatus == 'paid') {
+                $contact->custom_field2 += $commission;
+                $contact->custom_field4 -= $commission;
+            } elseif ($transaction_status_before == 'isDeletePayment') {
+                $contact->custom_field2 -= $commission;
+                $contact->custom_field4 += $commission;
+            } elseif ($transaction_status_before == 'draft' && $paymentStatus == 'paid') {
+                $contact->custom_field2 -= $commission;
+                $contact->custom_field4 += $commission;
+            } elseif ($transaction_status_before == 'isDelete' && $paymentStatus == 'paid') {
+                $contact->custom_field2 -= $commission;
+            } elseif ($transaction_status_before == 'isDelete' && $paymentStatus == null) {
+                $contact->custom_field4 -= $commission;
+            }
+        } elseif ($transactionUpdate->status == 'draft' && $paymentStatus === null) {
             $contact->custom_field4 += $commission;
-        } elseif ($transactionUpdate->status == 'final' && $paymentStatus == 'paid') {
-            $contact->custom_field2 += $commission;
+        } elseif ($transactionUpdate->status == 'draft' && $paymentStatus == 'due') {
             $contact->custom_field4 -= $commission;
-        } elseif ($transactionUpdate->status == 'draft'  && $paymentStatus == null) {
-            $contact->custom_field4 += $commission;
-        } elseif ($transactionUpdate->status == 'final'  && $paymentStatus == 'due') {
-            return;
-        } elseif ($transactionUpdate->status == 'draft'  && $paymentStatus == 'due') {
-            return;
-        } elseif ($transactionUpdate->status == 'final' && $transaction_status_before == 'isDeletePayment') {
-            $contact->custom_field2 -= $commission;
-            $contact->custom_field4 += $commission;
-        } elseif ($transactionUpdate->status == 'final' && $transaction_status_before == 'draft' && $paymentStatus == 'paid') {
-            $contact->custom_field2 -= $commission;
-            $contact->custom_field4 += $commission;
         }
 
         $contact->save();

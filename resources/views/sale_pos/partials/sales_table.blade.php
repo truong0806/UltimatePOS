@@ -6,7 +6,7 @@
         <tr>
             <th>@lang('messages.action')</th>
             <th>@lang('messages.date')</th>
-            <th>@lang('construction.contruction_name')</th>
+            <th>@lang('construction.construction_name')</th>
             <th>@lang('sale.invoice_no')</th>
             <th>@lang('sale.customer_name')</th>
             <th>@lang('lang_v1.contact_no')</th>
