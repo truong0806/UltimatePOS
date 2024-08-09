@@ -5,11 +5,11 @@
 
     <!-- Content Header (Page header) -->
     <section class="content-header">
-        <h1>{{ __('report.customer') }} & {{ __('report.supplier') }} {{ __('report.reports') }}</h1>
+        <h1>{{ __('report.construction') }}</h1>
         <!-- <ol class="breadcrumb">
-            <li><a href="#"><i class="fa fa-dashboard"></i> Level</a></li>
-            <li class="active">Here</li>
-        </ol> -->
+                                    <li><a href="#"><i class="fa fa-dashboard"></i> Level</a></li>
+                                    <li class="active">Here</li>
+                                </ol> -->
     </section>
 
     <!-- Main content -->
@@ -18,39 +18,6 @@
         <div class="row">
             <div class="col-md-12">
                 @component('components.filters', ['title' => __('report.filters')])
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            {!! Form::label('cg_customer_group_id', __('lang_v1.customer_group_name') . ':') !!}
-                            {!! Form::select('cnt_customer_group_id', $customer_group, null, [
-                                'class' => 'form-control select2',
-                                'style' => 'width:100%',
-                                'id' => 'cnt_customer_group_id',
-                            ]) !!}
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            {!! Form::label('type', __('lang_v1.type') . ':') !!}
-                            {!! Form::select('contact_type', $types, null, [
-                                'class' => 'form-control select2',
-                                'style' => 'width:100%',
-                                'id' => 'contact_type',
-                            ]) !!}
-                        </div>
-                    </div>
-
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            {!! Form::label('cs_report_location_id', __('sale.location') . ':') !!}
-                            {!! Form::select('cs_report_location_id', $business_locations, null, [
-                                'class' => 'form-control select2',
-                                'style' => 'width:100%',
-                                'id' => 'cs_report_location_id',
-                            ]) !!}
-                        </div>
-                    </div>
-
                     <div class="col-md-3">
                         <div class="form-group">
                             {!! Form::label('scr_contact_id', __('report.contact') . ':') !!}
@@ -81,13 +48,13 @@
             <div class="col-md-12">
                 @component('components.widget', ['class' => 'box-primary'])
                     <div class="table-responsive">
-                        <table class="table table-bordered table-striped" id="supplier_report_tbl">
+                        <table class="table table-bordered table-striped" id="construction_report_tbl">
                             <thead>
                                 <tr>
-                                    <th>@lang('report.contact')</th>
+                                    <th>@lang('construction.construction_name')</th>
+                                    <th>@lang('lang_v1.contact_name')</th>
                                     <th>@lang('report.total_purchase')</th>
                                     <th>@lang('lang_v1.total_purchase_return')</th>
-                                    <th>@lang('report.total_construction_sell')</th>
                                     <th>@lang('report.total_sell')</th>
                                     <th>@lang('lang_v1.total_sell_return')</th>
                                     <th>@lang('lang_v1.opening_balance_due')</th>
@@ -99,12 +66,12 @@
                             <tfoot>
                                 <tr class="bg-gray font-17 footer-total text-center">
                                     <td><strong>@lang('sale.total'):</strong></td>
+                                    <td></td>
                                     <td><span class="display_currency" id="footer_total_purchase"
                                             data-currency_symbol ="true"></span></td>
                                     <td><span class="display_currency" id="footer_total_purchase_return"
                                             data-currency_symbol ="true"></span></td>
-                                    <td><span class="display_currency" id="footer_total_construction_sell"
-                                            data-currency_symbol ="true"></span></td>
+
                                     <td><span class="display_currency" id="footer_total_sell"
                                             data-currency_symbol ="true"></span></td>
                                     <td><span class="display_currency" id="footer_total_sell_return"

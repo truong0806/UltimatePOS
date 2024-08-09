@@ -10,7 +10,7 @@ return [
     | The following language lines are used in reports
     |
     */
-
+    'total_construction_sell' => 'Total Construction Sell',
     'reports' => 'Reports',
     'purchase_sell_report' => 'Purchase & Sale',
     'purchase_sell' => 'Purchase & Sale Report',
@@ -72,6 +72,7 @@ return [
     'expiring_in_6_months' => 'Expiring in 6 months',
     'expiring_in_1_year' => 'Expiring in a year',
     'profit_loss' => 'Profit / Loss Report',
+    'construction' => 'Construction Report',
     'opening_stock' => 'Opening Stock',
     'closing_stock' => 'Closing stock',
     'total_expense' => 'Total Expense',

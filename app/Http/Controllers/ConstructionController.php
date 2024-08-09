@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\BusinessLocation;
 use App\Construction;
 use App\Contact;
+use App\Transaction;
 use App\TransactionPayment;
 use App\User;
 use App\Utils\ContactUtil;
@@ -312,5 +313,19 @@ class ConstructionController extends Controller
         $construction->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    public function checkPaymentBeforeDelete(Request $request)
+    {
+        $business_id = $request->session()->get('user.business_id');
+
+        $payment_list = $request->input('transaction_id');
+
+        $query = TransactionPayment::where('transaction_id', $transaction_id);
+
+        return [
+            'is_payment_exists' => !empty($query),
+            'msg' => __('lang_v1.mobile_already_registered', ['contacts' => implode(', ', $contacts), 'mobile' => $mobile_number]),
+        ];
     }
 }

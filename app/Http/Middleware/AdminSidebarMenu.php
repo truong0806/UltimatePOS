@@ -514,13 +514,13 @@ class AdminSidebarMenu
                 $menu->dropdown(
                     __('report.reports'),
                     function ($sub) use ($enabled_modules, $is_admin) {
-                        if (auth()->user()->can('profit_loss_report.view')) {
-                            $sub->url(
-                                action([\App\Http\Controllers\ReportController::class, 'getProfitLoss']),
-                                __('report.profit_loss'),
-                                ['icon' => 'fa fas fa-file-invoice-dollar', 'active' => request()->segment(2) == 'profit-loss']
-                            );
-                        }
+                        // if (auth()->user()->can('profit_loss_report.view')) {
+                        //     $sub->url(
+                        //         action([\App\Http\Controllers\ReportController::class, 'getProfitLoss']),
+                        //         __('report.profit_loss'),
+                        //         ['icon' => 'fa fas fa-file-invoice-dollar', 'active' => request()->segment(2) == 'profit-loss']
+                        //     );
+                        // }
                         if (config('constants.show_report_606') == true) {
                             $sub->url(
                                 action([\App\Http\Controllers\ReportController::class, 'purchaseReport']),
@@ -629,6 +629,13 @@ class AdminSidebarMenu
                                 action([\App\Http\Controllers\ReportController::class, 'sellPaymentReport']),
                                 __('lang_v1.sell_payment_report'),
                                 ['icon' => 'fa fas fa-search-dollar', 'active' => request()->segment(2) == 'sell-payment-report']
+                            );
+                        }
+                        if (auth()->user()->can('contacts_report.view')) {
+                            $sub->url(
+                                action([\App\Http\Controllers\ReportController::class, 'getConstructionReport']),
+                                __('report.construction'),
+                                ['icon' => 'fa fas fa-address-book', 'active' => request()->segment(2) == 'construction']
                             );
                         }
                         if (in_array('expenses', $enabled_modules) && auth()->user()->can('expense_report.view')) {

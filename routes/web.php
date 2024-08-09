@@ -115,6 +115,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
 
     Route::get('/constructions/{id}/edit', [ConstructionController::class, 'edit'])->name('constructions.edit');
     Route::get('/constructions/payments/{construction_id}', [ConstructionController::class, 'getConstructionPayments']);
+    Route::post('check-payment', [ConstructionController::class, 'checkPaymentBeforeDelete']);
 
     Route::delete('/constructions/{id}', [ConstructionController::class, 'destroy'])->name('constructions.destroy');
 
@@ -285,6 +286,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/reports/get-opening-stock', [ReportController::class, 'getOpeningStock']);
     Route::get('/reports/purchase-sell', [ReportController::class, 'getPurchaseSell']);
     Route::get('/reports/customer-supplier', [ReportController::class, 'getCustomerSuppliers']);
+    Route::get('/reports/construction', [ReportController::class, 'getConstructionReport']);
     Route::get('/reports/stock-report', [ReportController::class, 'getStockReport']);
     Route::get('/reports/stock-details', [ReportController::class, 'getStockDetails']);
     Route::get('/reports/tax-report', [ReportController::class, 'getTaxReport']);
