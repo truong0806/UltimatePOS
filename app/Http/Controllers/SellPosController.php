@@ -108,8 +108,20 @@ class SellPosController extends Controller
         $this->notificationUtil = $notificationUtil;
 
         $this->dummyPaymentLine = [
-            'method' => 'cash', 'amount' => 0, 'note' => '', 'card_transaction_number' => '', 'card_number' => '', 'card_type' => '', 'card_holder_name' => '', 'card_month' => '', 'card_year' => '', 'card_security' => '', 'cheque_number' => '', 'bank_account_number' => '',
-            'is_return' => 0, 'transaction_no' => '',
+            'method' => 'cash',
+            'amount' => 0,
+            'note' => '',
+            'card_transaction_number' => '',
+            'card_number' => '',
+            'card_type' => '',
+            'card_holder_name' => '',
+            'card_month' => '',
+            'card_year' => '',
+            'card_security' => '',
+            'cheque_number' => '',
+            'bank_account_number' => '',
+            'is_return' => 0,
+            'transaction_no' => '',
         ];
     }
 
@@ -645,7 +657,7 @@ class SellPosController extends Controller
                 }
 
                 if ($print_invoice) {
-                    $receipt = $this->receiptContent($business_id, $input['location_id'], $transaction->id, null, false, true, $invoice_layout_id);
+                    $receipt = $this->receiptContent($business_id, $input['location_id'], null, $transaction->id, null, false, true, $invoice_layout_id);
                 }
 
                 $output = ['success' => 1, 'msg' => $msg, 'receipt' => $receipt];
@@ -725,7 +737,7 @@ class SellPosController extends Controller
     private function receiptContent(
         $business_id,
         $location_id,
-        $construction_id,
+        $construction_id = null,
         $transaction_id,
         $printer_type = null,
         $is_package_slip = false,
@@ -1328,7 +1340,7 @@ class SellPosController extends Controller
                     $can_print_invoice = auth()->user()->can('print_invoice');
                     $invoice_layout_id = $request->input('invoice_layout_id');
 
-                    $receipt = $this->receiptContent($business_id, $input['location_id'], $transaction_before->id, null, false, true, $invoice_layout_id);
+                    $receipt = $this->receiptContent($business_id, $input['location_id'], null, $transaction_before->id, null, false, true, $invoice_layout_id);
                     $msg = trans('purchase.payment_updated_success');
 
                     $output = ['success' => 1, 'msg' => $msg, 'receipt' => $receipt];
@@ -1485,14 +1497,14 @@ class SellPosController extends Controller
                 } elseif ($input['status'] == 'draft' && $input['is_quotation'] == 1) {
                     $msg = trans('lang_v1.quotation_updated');
                     if (!$is_direct_sale && $can_print_invoice) {
-                        $receipt = $this->receiptContent($business_id, $input['location_id'], $transaction->id, null, false, true, $invoice_layout_id);
+                        $receipt = $this->receiptContent($business_id, $input['location_id'], null, $transaction->id, null, false, true, $invoice_layout_id);
                     } else {
                         $receipt = '';
                     }
                 } elseif ($input['status'] == 'final') {
                     $msg = trans('sale.pos_sale_updated');
                     if (!$is_direct_sale && $can_print_invoice) {
-                        $receipt = $this->receiptContent($business_id, $input['location_id'], $transaction->id, null, false, true, $invoice_layout_id);
+                        $receipt = $this->receiptContent($business_id, $input['location_id'], null, $transaction->id, null, false, true, $invoice_layout_id);
                     } else {
                         $receipt = '';
                     }
@@ -2123,7 +2135,7 @@ class SellPosController extends Controller
         if (!empty($transaction)) {
             $invoice_layout_id = $transaction->is_direct_sale ? $transaction->location->sale_invoice_layout_id : null;
 
-            $receipt = $this->receiptContent($transaction->business_id, $transaction->location_id, $transaction->id, 'browser', false, false, $invoice_layout_id);
+            $receipt = $this->receiptContent($transaction->business_id, $transaction->location_id, null, $transaction->id, 'browser', false, false, $invoice_layout_id);
             $pos_settings = empty($transaction->business->pos_settings) ? $this->businessUtil->defaultPosSettings() : json_decode($transaction->business->pos_settings, true);
             $payment_link = '';
             if (!empty($pos_settings['enable_payment_link']) && $transaction->payment_status != 'paid') {

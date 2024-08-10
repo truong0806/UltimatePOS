@@ -203,32 +203,35 @@
                             <small class="text-danger hide contact_due_text"><strong>@lang('account.customer_due'):</strong>
                                 <span></span></small>
                         </div>
-                        <small>
-                            <strong>
-                                @lang('lang_v1.billing_address'):
-                            </strong>
-                            <div id="billing_address_div">
-                                {!! $walk_in_customer['contact_address'] ?? '' !!}
-                            </div>
-                            <br>
-                            <strong>
-                                @lang('lang_v1.shipping_address'):
-                            </strong>
-                            <div id="shipping_address_div">
-                                {{ $walk_in_customer['supplier_business_name'] ?? '' }},<br>
-                                {{ $walk_in_customer['name'] ?? '' }},<br>
-                                {{ $walk_in_customer['shipping_address'] ?? '' }}
-                            </div>
-                            {{-- <div id="commission_percentage_container" style="display: hidden">
+                        <div class='flex flex-row'>
+                            <small>
                                 <strong>
-                                    @lang('lang_v1.commission_percentage'):
+                                    @lang('lang_v1.billing_address'):
                                 </strong>
-                                <div id="commission_percentage">
-                                    {{ $walk_in_customer['custom_field1'] ?? '' }}
+                                <div id="billing_address_div">
+                                    {!! $walk_in_customer['contact_address'] ?? '' !!}
                                 </div>
-                            </div> --}}
+                                <br>
+                                <strong>
+                                    @lang('lang_v1.shipping_address'):
+                                </strong>
+                                <div id="shipping_address_div">
+                                    {{ $walk_in_customer['supplier_business_name'] ?? '' }},<br>
+                                    {{ $walk_in_customer['name'] ?? '' }},<br>
+                                    {{ $walk_in_customer['shipping_address'] ?? '' }}
+                                </div>
+                                {{-- <div id="commission_percentage_container" style="display: hidden">
+                                    <strong>
+                                        @lang('lang_v1.commission_percentage'):
+                                    </strong>
+                                    <div id="commission_percentage">
+                                        {{ $walk_in_customer['custom_field1'] ?? '' }}
+                                    </div>
+                                </div> --}}
 
-                        </small>
+                            </small>
+
+                        </div>
                     </div>
 
                     <div class="col-md-3">
@@ -1404,8 +1407,10 @@
                         '<p><b>@lang('construction.description') </b>: ' + (data?.description || 'N/A') + '</p>' +
                         '<p><b>@lang('construction.start_date') </b>: ' + (data?.start_date || 'N/A') + '</p>' +
                         '<p><b>@lang('construction.end_date') </b>: ' + (data?.end_date || 'N/A') + '</p>' +
-                        '<p><b>@lang('construction.customer') </b>: ' + (data?.contact_name || 'N/A') + '</p>' +
-                        '<p><b>@lang('construction.introducer') </b>: ' + (data?.introducer_name || 'N/A') + '</p>'
+                        '<p><b>@lang('construction.customer') </b>: ' + (data?.contact_name || 'N/A') + " - " + (data
+                            ?.contact_id2 || 'N/A') + '</p>' +
+                        '<p><b>@lang('construction.introducer') </b>: ' + (data?.introducer_name || 'N/A') + " - " + (data
+                            ?.contact_id1 || 'N/A') + '</p>'
                     );
                 }
             }
@@ -1439,7 +1444,6 @@
 
                 var form = $('#create_construction_form');
                 var formData = form.serialize();
-                console.log("🚀 ~ formData:", formData)
 
                 if (!validateForm(form)) {
                     alert('Please fill in all required fields.');
@@ -1451,7 +1455,6 @@
                         contentType: 'application/json',
                         data: JSON.stringify(payload),
                         success: function(response) {
-                            console.log("Server Response:", response);
                             if (response.success) {
                                 $('#createConstructionModal').modal('hide');
                                 loadConstructions();
@@ -1511,6 +1514,8 @@
                             introducer_name: construction.introducer_name,
                             customer_id: construction.contact_id,
                             introducer_id: construction.introducer_id,
+                            contact_id1: construction.contact_id1,
+                            contact_id2: construction.contact_id2,
                         }));
 
                         $select.select2({

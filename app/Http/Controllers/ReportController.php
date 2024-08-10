@@ -1233,7 +1233,7 @@ class ReportController extends Controller
                 ->make(true);
         }
 
-        $users = User::forDropdown($business_id, false);
+            $users = User::forDropdown($business_id, false);
         $payment_types = $this->transactionUtil->payment_types(null, true, $business_id);
 
         return view('report.register_report')

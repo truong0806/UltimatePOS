@@ -94,6 +94,22 @@ class AdminSidebarMenu
                             );
                         }
 
+                        if (auth()->user()->can('supplier.create') || auth()->user()->can('customer.create')) {
+                            $sub->url(
+                                action([\App\Http\Controllers\ConstructionController::class, 'index']),
+                                __('lang_v1.all_construction'),
+                                ['icon' => 'fa fas fa-list', 'active' => request()->segment(1) == 'construction' && request()->segment(2) == null]
+                            );
+                        }
+
+                        if (auth()->user()->can('direct_sell.access')) {
+                            $sub->url(
+                                action([\App\Http\Controllers\ConstructionController::class, 'showCreateForm']),
+                                __('sale.add_construction'),
+                                ['icon' => 'fa fas fa-plus-circle', 'active' => request()->segment(1) == 'constructions' && request()->segment(2) == 'create' && empty(request()->get('status'))]
+                            );
+                        }
+
                         if (!empty(env('GOOGLE_MAP_API_KEY'))) {
                             $sub->url(
                                 action([\App\Http\Controllers\ContactController::class, 'contactMap']),
@@ -286,21 +302,7 @@ class AdminSidebarMenu
                             );
                         }
 
-                        if ($is_admin || auth()->user()->hasAnyPermission(['sell.view', 'sell.create', 'direct_sell.access', 'direct_sell.view', 'view_own_sell_only', 'view_commission_agent_sell', 'access_shipping', 'access_own_shipping', 'access_commission_agent_shipping'])) {
-                            $sub->url(
-                                action([\App\Http\Controllers\ConstructionController::class, 'index']),
-                                __('lang_v1.all_construction'),
-                                ['icon' => 'fa fas fa-list', 'active' => request()->segment(1) == 'construction' && request()->segment(2) == null]
-                            );
-                        }
 
-                        if (in_array('add_sale', $enabled_modules) && auth()->user()->can('direct_sell.access')) {
-                            $sub->url(
-                                action([\App\Http\Controllers\ConstructionController::class, 'showCreateForm']),
-                                __('sale.add_construction'),
-                                ['icon' => 'fa fas fa-plus-circle', 'active' => request()->segment(1) == 'constructions' && request()->segment(2) == 'create' && empty(request()->get('status'))]
-                            );
-                        }
                         if (auth()->user()->can('sell.create')) {
                             if (in_array('pos_sale', $enabled_modules)) {
                                 if (auth()->user()->can('sell.view')) {
@@ -319,6 +321,16 @@ class AdminSidebarMenu
                             }
                         }
 
+
+                        if ($is_admin || auth()->user()->hasAnyPermission(['sell.view', 'sell.create', 'direct_sell.access', 'direct_sell.view', 'view_own_sell_only', 'view_commission_agent_sell', 'access_shipping', 'access_own_shipping', 'access_commission_agent_shipping'])) {
+                            $sub->url(
+                                action([\App\Http\Controllers\SellController::class, 'getConstructionTransaction']),
+                                __('construction.all_construction'),
+                                ['icon' => 'fa fas fa-list', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == null]
+                            );
+                        }
+
+
                         if (in_array('add_sale', $enabled_modules) && auth()->user()->can('direct_sell.access')) {
                             $sub->url(
                                 action([\App\Http\Controllers\SellController::class, 'create'], ['status' => 'draft']),
@@ -326,6 +338,9 @@ class AdminSidebarMenu
                                 ['icon' => 'fa fas fa-plus-circle', 'active' => request()->get('status') == 'draft']
                             );
                         }
+
+
+
                         if (in_array('add_sale', $enabled_modules) && ($is_admin || auth()->user()->hasAnyPermission(['draft.view_all', 'draft.view_own']))) {
                             $sub->url(
                                 action([\App\Http\Controllers\SellController::class, 'getDrafts']),
@@ -638,13 +653,13 @@ class AdminSidebarMenu
                                 ['icon' => 'fa fas fa-address-book', 'active' => request()->segment(2) == 'construction']
                             );
                         }
-                        if (in_array('expenses', $enabled_modules) && auth()->user()->can('expense_report.view')) {
-                            $sub->url(
-                                action([\App\Http\Controllers\ReportController::class, 'getExpenseReport']),
-                                __('report.expense_report'),
-                                ['icon' => 'fa fas fa-search-minus', 'active' => request()->segment(2) == 'expense-report']
-                            );
-                        }
+                        // if (in_array('expenses', $enabled_modules) && auth()->user()->can('expense_report.view')) {
+                        //     $sub->url(
+                        //         action([\App\Http\Controllers\ReportController::class, 'getExpenseReport']),
+                        //         __('report.expense_report'),
+                        //         ['icon' => 'fa fas fa-search-minus', 'active' => request()->segment(2) == 'expense-report']
+                        //     );
+                        // }
                         if (auth()->user()->can('register_report.view')) {
                             $sub->url(
                                 action([\App\Http\Controllers\ReportController::class, 'getRegisterReport']),

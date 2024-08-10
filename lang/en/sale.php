@@ -44,6 +44,7 @@ return [
     'discount_amount' => 'Discount Amount',
     'no_recent_transactions' => 'No Recent Transactions',
     'final' => 'Final',
+    'list_construction' => 'List construction',
     'invoice_no' => 'Invoice No.',
     'advance_balance' => 'Overpayment',
     'total_return' => 'Total return',

@@ -320,7 +320,6 @@ class ContactController extends Controller
         }
 
         $business_id = request()->session()->get('user.business_id');
-
         $is_admin = $this->contactUtil->is_admin(auth()->user());
 
         $query = $this->contactUtil->getContactQuery($business_id, 'customer');
@@ -334,7 +333,7 @@ class ContactController extends Controller
         }
 
         if (request()->has('has_advance_balance')) {
-            $query->where('balance', '>', 0);
+            $query->where('contacts.balance', '>', 0);
         }
 
         if (request()->has('has_opening_balance')) {
@@ -497,10 +496,37 @@ class ContactController extends Controller
 
                 return $html;
             })
+            // ->editColumn('balance', function ($row) {
+            //     $html = '<span data-orig-value="' . $row->balance . '">' . $this->transactionUtil->num_f($row->balance, true) . '</span>';
+
+            //     return $html;
+            // })
+            ->editColumn('custom_field4', function ($row) {
+                if (!is_null($row->custom_field4)) {
+                    $html = $this->transactionUtil->num_f($row->custom_field4, true);
+                } else {
+                    $html = '';
+                }
+
+                return $html;
+            })
+            ->editColumn('custom_field1', function ($row) {
+                return $row->custom_field1;
+            })
+
             ->editColumn('credit_limit', function ($row) {
                 $html = __('lang_v1.no_limit');
                 if (!is_null($row->credit_limit)) {
                     $html = '<span data-orig-value="' . $row->credit_limit . '">' . $this->transactionUtil->num_f($row->credit_limit, true) . '</span>';
+                }
+
+                return $html;
+            })
+            ->editColumn('custom_field2', function ($row) {
+                if (!is_null($row->custom_field2)) {
+                    $html = $this->transactionUtil->num_f($row->custom_field2, true);
+                } else {
+                    $html = '';
                 }
 
                 return $html;
@@ -617,8 +643,42 @@ class ContactController extends Controller
             }
 
             $input = $request->only([
-                'type', 'supplier_business_name',
-                'prefix', 'first_name', 'middle_name', 'last_name', 'tax_number', 'pay_term_number', 'pay_term_type', 'mobile', 'landline', 'alternate_number', 'city', 'state', 'country', 'address_line_1', 'address_line_2', 'customer_group_id', 'zip_code', 'contact_id', 'custom_field1', 'custom_field2', 'custom_field3', 'custom_field4', 'custom_field5', 'custom_field6', 'custom_field7', 'custom_field8', 'custom_field9', 'custom_field10', 'email', 'shipping_address', 'position', 'dob', 'shipping_custom_field_details', 'assigned_to_users',
+                'type',
+                'supplier_business_name',
+                'prefix',
+                'first_name',
+                'middle_name',
+                'last_name',
+                'tax_number',
+                'pay_term_number',
+                'pay_term_type',
+                'mobile',
+                'landline',
+                'alternate_number',
+                'city',
+                'state',
+                'country',
+                'address_line_1',
+                'address_line_2',
+                'customer_group_id',
+                'zip_code',
+                'contact_id',
+                'custom_field1',
+                'custom_field2',
+                'custom_field3',
+                'custom_field4',
+                'custom_field5',
+                'custom_field6',
+                'custom_field7',
+                'custom_field8',
+                'custom_field9',
+                'custom_field10',
+                'email',
+                'shipping_address',
+                'position',
+                'dob',
+                'shipping_custom_field_details',
+                'assigned_to_users',
             ]);
 
             $name_array = [];
@@ -696,8 +756,10 @@ class ContactController extends Controller
         }
 
         $business_id = request()->session()->get('user.business_id');
-        $contact = $this->contactUtil->getContactInfo($business_id, $id);
+        $business = Business::where('id', $business_id)->first();
 
+        $contact = $this->contactUtil->getContactInfo($business_id, $id);
+        $contact['custom_field5'] = $business->default_commission_percent;
         $is_selected_contacts = User::isSelectedContacts(auth()->user()->id);
         $user_contacts = [];
         if ($is_selected_contacts) {
@@ -810,8 +872,48 @@ class ContactController extends Controller
         if (request()->ajax()) {
             try {
                 $input = $request->only([
-                    'type', 'supplier_business_name', 'prefix', 'first_name', 'middle_name', 'last_name', 'tax_number', 'pay_term_number', 'pay_term_type', 'mobile', 'address_line_1', 'address_line_2', 'zip_code', 'dob', 'alternate_number', 'city', 'state', 'country', 'landline', 'customer_group_id', 'contact_id', 'custom_field1', 'custom_field2', 'custom_field3', 'custom_field4', 'custom_field5', 'custom_field6', 'custom_field7', 'custom_field8', 'custom_field9', 'custom_field10', 'email', 'shipping_address', 'position', 'shipping_custom_field_details', 'export_custom_field_1', 'export_custom_field_2', 'export_custom_field_3', 'export_custom_field_4', 'export_custom_field_5',
-                    'export_custom_field_6', 'assigned_to_users',
+                    'type',
+                    'supplier_business_name',
+                    'prefix',
+                    'first_name',
+                    'middle_name',
+                    'last_name',
+                    'tax_number',
+                    'pay_term_number',
+                    'pay_term_type',
+                    'mobile',
+                    'address_line_1',
+                    'address_line_2',
+                    'zip_code',
+                    'dob',
+                    'alternate_number',
+                    'city',
+                    'state',
+                    'country',
+                    'landline',
+                    'customer_group_id',
+                    'contact_id',
+                    'custom_field1',
+                    'custom_field2',
+                    'custom_field3',
+                    'custom_field4',
+                    'custom_field5',
+                    'custom_field6',
+                    'custom_field7',
+                    'custom_field8',
+                    'custom_field9',
+                    'custom_field10',
+                    'email',
+                    'shipping_address',
+                    'position',
+                    'shipping_custom_field_details',
+                    'export_custom_field_1',
+                    'export_custom_field_2',
+                    'export_custom_field_3',
+                    'export_custom_field_4',
+                    'export_custom_field_5',
+                    'export_custom_field_6',
+                    'assigned_to_users',
                 ]);
 
                 $name_array = [];
@@ -1724,5 +1826,16 @@ class ContactController extends Controller
             'is_mobile_exists' => !empty($contacts),
             'msg' => __('lang_v1.mobile_already_registered', ['contacts' => implode(', ', $contacts), 'mobile' => $mobile_number]),
         ];
+    }
+
+    public function checkContact($id)
+    {
+        $contact = Contact::find($id);
+
+        if ($contact) {
+            return view('check_contact_info', compact('contact'));
+        } else {
+            return back()->with('error', 'Contact not found!');
+        }
     }
 }

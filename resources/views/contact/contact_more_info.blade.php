@@ -8,6 +8,13 @@
         {{ $contact->custom_field1 }} %
     </p>
 @endif
+@if (!empty($contact->custom_field1))
+    <strong>{{ $custom_labels['contact']['custom_field_5'] ?? __('lang_v1.contact_custom_field5') }}</strong>
+    <p class="text-muted">
+        {{ number_format($contact->custom_field5, 0) }} %
+
+    </p>
+@endif
 
 @if (!empty($contact->custom_field2))
     <strong>{{ $custom_labels['contact']['custom_field_2'] ?? __('lang_v1.contact_custom_field2') }}</strong>

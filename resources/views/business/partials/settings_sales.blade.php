@@ -141,7 +141,7 @@
         <div class="col-md-12">
             <h4>@lang('lang_v1.commission_agent'):</h4>
         </div>
-        <div class="col-sm-4">
+        {{-- <div class="col-sm-4">
             <div class="form-group">
                 {!! Form::label('sales_cmsn_agnt', __('lang_v1.sales_commission_agent') . ':') !!}
                 <div class="input-group">
@@ -154,8 +154,8 @@
                     ]) !!}
                 </div>
             </div>
-        </div>
-        <div class="col-sm-4">
+        </div> --}}
+        {{-- <div class="col-sm-4">
             <div class="form-group">
                 {!! Form::label('cmmsn_calculation_type', __('lang_v1.cmmsn_calculation_type') . ':') !!}
                 <div class="input-group">
@@ -183,6 +183,15 @@
                         ) !!} {{ __('lang_v1.is_commission_agent_required') }}
                     </label>
                 </div>
+            </div>
+        </div> --}}
+        <div class="col-sm-4">
+            <div class="form-group">
+                {!! Form::label('introducer_commission_contact', __('lang_v1.contact_custom_field5')) !!}
+                {!! Form::text('introducer_commission_contact', $pos_settings['introducer_commission_contact'] ?? '', [
+                    'class' => 'form-control',
+                    'id' => 'introducer_commission_contact',
+                ]) !!}
             </div>
         </div>
     </div>

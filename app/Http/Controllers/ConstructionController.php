@@ -87,11 +87,17 @@ class ConstructionController extends Controller
             ->editColumn('contact_name', function ($row) {
                 return $row->contact ? $row->contact->name : 'none';
             })
+            ->editColumn('contact_id2', function ($row) {
+                return $row->contact ? $row->contact->contact_id : 'none';
+            })
             ->editColumn('introducer_name', function ($row) {
                 return $row->introducer ? $row->introducer->name : 'none';
             })
             ->editColumn('contact_id', function ($row) {
                 return $row->contact ? $row->contact->id : 'none';
+            })
+            ->editColumn('contact_id1', function ($row) {
+                return $row->contact ? $row->introducer->contact_id : 'none';
             })
             ->editColumn('introducer_id', function ($row) {
                 return $row->introducer ? $row->introducer->id : 'none';
@@ -110,8 +116,17 @@ class ConstructionController extends Controller
     {
         $business_id = request()->session()->get('user.business_id');
         $contacts = Contact::contactDropdown($business_id);
+
+        // Loại bỏ giá trị "Walk-In Customer - (CO0001)"
+        $contacts = $contacts->reject(function ($contact) {
+            return $contact === 'Walk-In Customer - (CO0001)';
+        });
+
         return view('constructions.create', compact('contacts'));
     }
+
+
+
 
     public function createConstruction(Request $request)
     {
@@ -268,8 +283,8 @@ class ConstructionController extends Controller
 
         return response()->json([
             'construction' => $construction,
-            'customers' => $customers->map(fn ($name, $id) => ['id' => $id, 'name' => $name]),
-            'introducers' => $introducers->map(fn ($name, $id) => ['id' => $id, 'name' => $name]),
+            'customers' => $customers->map(fn($name, $id) => ['id' => $id, 'name' => $name]),
+            'introducers' => $introducers->map(fn($name, $id) => ['id' => $id, 'name' => $name]),
             'customer_id' => $construction->contact_id,
             'introducer_id' => $construction->introducer_id
         ]);
@@ -303,9 +318,7 @@ class ConstructionController extends Controller
 
 
 
-    public function view($id)
-    {
-    }
+    public function view($id) {}
 
     public function destroy($id)
     {

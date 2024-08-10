@@ -379,7 +379,11 @@ $(document).ready(function () {
             { data: 'tax_number', name: 'tax_number' },
             { data: 'pay_term', name: 'pay_term', searchable: false, orderable: false },
             { data: 'opening_balance', name: 'opening_balance', searchable: false },
-            { data: 'balance', name: 'balance', searchable: false },
+            {
+                data: 'balance',
+                name: 'balance',
+                searchable: false,
+            },
             { data: 'created_at', name: 'contacts.created_at' },
             { data: 'address', name: 'address', orderable: false },
             { data: 'mobile', name: 'mobile' },
@@ -420,9 +424,31 @@ $(document).ready(function () {
             { data: 'mobile', name: 'mobile' },
             { data: 'due', searchable: false, orderable: false },
             { data: 'return_due', searchable: false, orderable: false },
-            { data: 'custom_field1', name: 'custom_field1' },
+            {
+                data: 'custom_field1',
+                name: 'custom_field1',
+                render: function (data, type, row) {
+                    if (row.custom_field2) {
+                        return '<span>' + row.custom_field1 + ' %</span>';
+                    } else {
+                        return '';
+                    }
+                },
+            },
             { data: 'custom_field2', name: 'custom_field2' },
-            { data: 'custom_field3', name: 'custom_field3' },
+            {
+                data: 'introducer_name',
+                name: 'introducer_name',
+                render: function (data, type, row) {
+                    if (row.introducer_name) {
+                        var url = '/UltimatePOS/public/contacts/' + row.custom_field3;
+                        return (
+                            '<a target="_blank" href="' + url + '">' + row.introducer_name + '</a>'
+                        );
+                    }
+                    return data;
+                },
+            },
             { data: 'custom_field4', name: 'custom_field4' },
             { data: 'custom_field5', name: 'custom_field5' },
             { data: 'custom_field6', name: 'custom_field6' },
@@ -508,6 +534,7 @@ $(document).ready(function () {
             var total_return_due = 0;
             var total_commission_amount = 0;
             var total_temporary_commission = 0;
+            var total_contact_advance = 0;
             for (var r in data) {
                 total_due += $(data[r].due).data('orig-value')
                     ? parseFloat($(data[r].due).data('orig-value'))
@@ -517,18 +544,21 @@ $(document).ready(function () {
                     ? parseFloat($(data[r].return_due).data('orig-value'))
                     : 0;
 
-                console.log('🚀 ~ data[r].custom_field2:', data[r].custom_field4);
-                if (data[r].custom_field2) {
-                    var customField2Value = data[r].custom_field2.replace(/[₫,]/g, '').trim();
-                    total_commission_amount += customField2Value
-                        ? parseFloat(customField2Value)
-                        : 0;
-                }
                 if (data[r].custom_field4) {
-                    var customField4Value = data[r].custom_field4.replace(/[₫,]/g, '').trim();
-                    total_temporary_commission += customField4Value
-                        ? parseFloat(customField4Value)
-                        : 0;
+                    var match = data[r].custom_field4.match(/data-orig-value="([^"]+)"/);
+
+                    if (match) {
+                        var custom_field4 = match[1].replace(/[₫,]/g, '').trim();
+                        total_commission_amount += custom_field4 ? parseFloat(custom_field4) : 0;
+                    }
+                }
+                if (data[r].balance) {
+                    var match = data[r].balance.match(/data-orig-value="([^"]+)"/);
+
+                    if (match) {
+                        var balance = match[1].replace(/[₫,]/g, '').trim();
+                        total_contact_advance += balance ? parseFloat(balance) : 0;
+                    }
                 }
             }
             $('.footer_contact_due').html(__currency_trans_from_en(total_due));
@@ -539,6 +569,7 @@ $(document).ready(function () {
             $('.footer_contact_temporary_commission').html(
                 __currency_trans_from_en(total_temporary_commission)
             );
+            $('.footer_contact_advance').html(__currency_trans_from_en(total_contact_advance));
         },
     });
     $(document).on(

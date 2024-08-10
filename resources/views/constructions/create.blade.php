@@ -46,7 +46,6 @@
                                     {!! Form::label('contact_id', __('construction.customer') . ':') !!}
                                     {!! Form::select('contact_id', $contacts, null, [
                                         'class' => 'form-control',
-                                        'placeholder' => __('construction.select_introducer'),
                                     ]) !!}
                                 </div>
                             </div>
@@ -56,7 +55,6 @@
                                     {!! Form::label('introducer_id', __('construction.introducer') . ':') !!}
                                     {!! Form::select('introducer_id', $contacts, null, [
                                         'class' => 'form-control',
-                                        'placeholder' => __('construction.select_introducer'),
                                     ]) !!}
                                 </div>
                             </div>

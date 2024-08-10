@@ -1223,7 +1223,7 @@ class TransactionUtil extends Util
         //Invoice info
         $output['invoice_no'] = $transaction->invoice_no;
         $output['invoice_no_prefix'] = $il->invoice_no_prefix;
-        $output['shipping_address'] = !empty($transaction->shipping_address()) ? $transaction->shipping_address() : $transaction->shipping_address;
+        $output['shipping_address'] = !empty($transaction->shipping_address()) ? $transaction->shipping_address() : $transaction->shipping_address();
 
         $output['construction_name'] = $construction_details->name;
         $output['construction_label'] = __('messages.constructions')  . ':';
@@ -3038,9 +3038,7 @@ class TransactionUtil extends Util
     {
         $status = $this->calculatePaymentStatus($transaction_id, $final_amount);
         $transaction = Transaction::find($transaction_id);
-        if (!empty($transaction->construction_id) && !is_null($transaction_status_before)) {
-            $this->updateCommission($transaction, $transaction_status_before,  $status);
-        };
+        $this->updateCommission($transaction, $transaction_status_before,  $status);
         $transaction->payment_status = $status;
         $transaction->save();
 
@@ -3250,8 +3248,10 @@ class TransactionUtil extends Util
                 ->where('transactions.business_id', $business['id'])
                 ->where('transactions.location_id', $business['location_id'])
                 ->whereIn('transactions.type', [
-                    'purchase', 'purchase_transfer',
-                    'opening_stock', 'production_purchase',
+                    'purchase',
+                    'purchase_transfer',
+                    'opening_stock',
+                    'production_purchase',
                 ])
                 ->where('transactions.status', 'received')
                 ->whereRaw("( $qty_sum_query ) < PL.quantity")
@@ -3707,7 +3707,8 @@ class TransactionUtil extends Util
                     'SAL.variation_id AS adjust_variation_id',
                     'SAL.id AS adjust_line_id',
                     'transaction_sell_lines_purchase_lines.quantity',
-                    'transaction_sell_lines_purchase_lines.purchase_line_id', 'transaction_sell_lines_purchase_lines.id as tslpl_id',
+                    'transaction_sell_lines_purchase_lines.purchase_line_id',
+                    'transaction_sell_lines_purchase_lines.id as tslpl_id',
                 ])
                 ->get();
 
@@ -5199,11 +5200,21 @@ class TransactionUtil extends Util
         $with = ['location'];
         if ($line_details) {
             $with = [
-                'location', 'sell_lines', 'sell_lines.sub_unit', 'sell_lines.product',
-                'sell_lines.variations', 'sell_lines.product.unit', 'sell_lines.variations.product_variation',
-                'sell_lines.line_tax', 'purchase_lines', 'purchase_lines.product', 'purchase_lines.variations',
-                'purchase_lines.variations.product_variation', 'purchase_lines.line_tax',
-                'purchase_lines.product.unit', 'purchase_lines.product.unit.sub_units',
+                'location',
+                'sell_lines',
+                'sell_lines.sub_unit',
+                'sell_lines.product',
+                'sell_lines.variations',
+                'sell_lines.product.unit',
+                'sell_lines.variations.product_variation',
+                'sell_lines.line_tax',
+                'purchase_lines',
+                'purchase_lines.product',
+                'purchase_lines.variations',
+                'purchase_lines.variations.product_variation',
+                'purchase_lines.line_tax',
+                'purchase_lines.product.unit',
+                'purchase_lines.product.unit.sub_units',
             ];
         }
         //Get transaction totals between dates
@@ -5543,11 +5554,21 @@ class TransactionUtil extends Util
         $with = ['location'];
         if ($line_details) {
             $with = [
-                'location', 'sell_lines', 'sell_lines.sub_unit', 'sell_lines.product',
-                'sell_lines.variations', 'sell_lines.product.unit', 'sell_lines.variations.product_variation',
-                'sell_lines.line_tax', 'purchase_lines', 'purchase_lines.product', 'purchase_lines.variations',
-                'purchase_lines.variations.product_variation', 'purchase_lines.line_tax',
-                'purchase_lines.product.unit', 'purchase_lines.product.unit.sub_units',
+                'location',
+                'sell_lines',
+                'sell_lines.sub_unit',
+                'sell_lines.product',
+                'sell_lines.variations',
+                'sell_lines.product.unit',
+                'sell_lines.variations.product_variation',
+                'sell_lines.line_tax',
+                'purchase_lines',
+                'purchase_lines.product',
+                'purchase_lines.variations',
+                'purchase_lines.variations.product_variation',
+                'purchase_lines.line_tax',
+                'purchase_lines.product.unit',
+                'purchase_lines.product.unit.sub_units',
             ];
         }
         //Get transaction totals between dates
@@ -5988,7 +6009,13 @@ class TransactionUtil extends Util
         );
 
         $transaction_types = [
-            'purchase_return', 'sell_return', 'expense', 'stock_adjustment', 'sell_transfer', 'purchase', 'sell',
+            'purchase_return',
+            'sell_return',
+            'expense',
+            'stock_adjustment',
+            'sell_transfer',
+            'purchase',
+            'sell',
         ];
 
         $transaction_totals = $this->getTransactionTotals(
@@ -6198,9 +6225,15 @@ class TransactionUtil extends Util
     public function createExpense($request, $business_id, $user_id, $format_data = true)
     {
         $transaction_data = $request->only([
-            'ref_no', 'transaction_date',
-            'location_id', 'final_total', 'expense_for', 'additional_notes',
-            'expense_category_id', 'tax_id', 'contact_id',
+            'ref_no',
+            'transaction_date',
+            'location_id',
+            'final_total',
+            'expense_for',
+            'additional_notes',
+            'expense_category_id',
+            'tax_id',
+            'contact_id',
         ]);
 
         $transaction_data['business_id'] = $business_id;
@@ -6361,9 +6394,18 @@ class TransactionUtil extends Util
         $contact_id = $request->input('contact_id');
         $business_id = auth()->user()->business_id;
         $inputs = $request->only([
-            'amount', 'method', 'note', 'card_number', 'card_holder_name',
-            'card_transaction_number', 'card_type', 'card_month', 'card_year', 'card_security',
-            'cheque_number', 'bank_account_number',
+            'amount',
+            'method',
+            'note',
+            'card_number',
+            'card_holder_name',
+            'card_transaction_number',
+            'card_type',
+            'card_month',
+            'card_year',
+            'card_security',
+            'cheque_number',
+            'bank_account_number',
         ]);
 
         //payment type option is available on pay contact modal
@@ -6865,14 +6907,20 @@ class TransactionUtil extends Util
     public function updateCommission($transactionUpdate, $transaction_status_before, $paymentStatus = null)
     {
         $construction = \App\Construction::find($transactionUpdate->construction_id);
-        $contact = \App\Contact::find($construction->introducer_id);
 
-        if (is_null($contact->custom_field1) || is_null($transactionUpdate->construction_id)) {
+        if (is_null($transactionUpdate->construction_id)) {
+            $contact = \App\Contact::find($transactionUpdate->contact_id);
+            if ($contact->custom_field3 && empty($construction)) {
+                $this->updateCommissionForIntroducer($contact->custom_field3, $transactionUpdate, $construction, $transaction_status_before, $contact->business_id);
+            }
             return;
         }
 
+        $contact = \App\Contact::find($construction->introducer_id);
         $commission = $transactionUpdate->total_before_tax * ($contact->custom_field1 / 100);
-
+        if (!is_null($transactionUpdate->construction_id) && !is_null($contact->custom_field1)) {
+            return;
+        }
         if ($transactionUpdate->status == 'final') {
             if ($paymentStatus === null && $transaction_status_before == 'isCreate') {
                 $contact->custom_field4 += $commission;
@@ -6885,17 +6933,40 @@ class TransactionUtil extends Util
             } elseif ($transaction_status_before == 'draft' && $paymentStatus == 'paid') {
                 $contact->custom_field2 -= $commission;
                 $contact->custom_field4 += $commission;
-            } elseif ($transaction_status_before == 'isDelete' && $paymentStatus == 'paid') {
-                $contact->custom_field2 -= $commission;
-            } elseif ($transaction_status_before == 'isDelete' && $paymentStatus == null) {
+            } elseif ($transaction_status_before == 'isDelete') {
+                $contact->custom_field4 -= $commission;
+                if ($paymentStatus == 'paid') {
+                    $contact->custom_field2 -= $commission;
+                }
+            }
+        } elseif ($transactionUpdate->status == 'draft') {
+            $contact->custom_field4 += $commission;
+            if ($paymentStatus == 'due') {
                 $contact->custom_field4 -= $commission;
             }
-        } elseif ($transactionUpdate->status == 'draft' && $paymentStatus === null) {
-            $contact->custom_field4 += $commission;
-        } elseif ($transactionUpdate->status == 'draft' && $paymentStatus == 'due') {
-            $contact->custom_field4 -= $commission;
         }
 
         $contact->save();
+    }
+
+
+    public function updateCommissionForIntroducer($intro_id, $transactionUpdate, $construction, $transaction_status_before = null, $business_id)
+    {
+        $contact = \App\Contact::find($intro_id);
+
+        if (is_null($contact) || empty($contact) || !empty($construction) || is_null($business_id)) {
+            return;
+        }
+        $default_commission_percent = Business::find($business_id);
+        if ($default_commission_percent == 0) {
+            $commission = $transactionUpdate->total_before_tax * ($default_commission_percent / 100);
+            if ($transaction_status_before == 'isDeletePayment' && $transactionUpdate->payment_status == 'paid') {
+                $contact->custom_field2 -= $commission;
+            } else {
+                $contact->custom_field2 += $commission;
+            }
+
+            $contact->save();
+        }
     }
 }

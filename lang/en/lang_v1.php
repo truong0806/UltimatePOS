@@ -912,6 +912,7 @@ return [
     'due_date_label' => 'Due date label',
     'show_due_date' => 'Show due date',
     'contact_custom_field1' => '% Construction commission',
+    'contact_custom_field5' => '% Introducer commission contact',
     'validate_custom_field1' => 'have value 0 to 100',
     'contact_custom_field2' => 'Commission amount',
     'contact_custom_field3' => 'Introducer',

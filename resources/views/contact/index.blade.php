@@ -220,12 +220,14 @@
                                 @if ($reward_enabled)
                                     colspan="9"
                                 @else
-                                    colspan="8" @endif
+                                    colspan="3" @endif
                                 @endif>
                                 <strong>
                                     @lang('sale.total'):
                                 </strong>
                             </td>
+                            <td colspan="1" class="footer_contact_advance"></td>
+                            <td colspan="4" ></td>
                             <td class="footer_contact_due"></td>
                             <td class="footer_contact_return_due"></td>
                             <td></td>

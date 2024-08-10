@@ -98,7 +98,7 @@ Route::middleware(['setData'])->group(function () {
     Route::post('/confirm-payment/{id}', [SellPosController::class, 'confirmPayment'])
         ->name('confirm_payment');
 });
-
+Route::get('/check-contact/{id}', [ContactController::class, 'checkContact'])->name('checkContact');
 
 
 //Routes for authenticated users only
@@ -238,6 +238,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/sells/convert-to-proforma/{id}', [SellPosController::class, 'convertToProforma']);
     Route::get('/sells/quotations', [SellController::class, 'getQuotations']);
     Route::get('/sells/draft-dt', [SellController::class, 'getDraftDatables']);
+    Route::get('/sells/list-construction', [SellController::class, 'getConstructionTransaction']);
     Route::resource('sells', SellController::class)->except(['show']);
 
     Route::get('/import-sales', [ImportSalesController::class, 'index']);

@@ -94,7 +94,7 @@ class BusinessController extends Controller
 
         $months = [];
         for ($i = 1; $i <= 12; $i++) {
-            $months[$i] = __('business.months.'.$i);
+            $months[$i] = __('business.months.' . $i);
         }
 
         $accounting_methods = $this->businessUtil->allAccountingMethods();
@@ -172,12 +172,30 @@ class BusinessController extends Controller
 
             $user = User::create_user($owner_details);
 
-            $business_details = $request->only(['name', 'start_date', 'currency_id', 'time_zone',
-                'fy_start_month', 'accounting_method', 'tax_label_1', 'tax_number_1',
-                'tax_label_2', 'tax_number_2', ]);
+            $business_details = $request->only([
+                'name',
+                'start_date',
+                'currency_id',
+                'time_zone',
+                'fy_start_month',
+                'accounting_method',
+                'tax_label_1',
+                'tax_number_1',
+                'tax_label_2',
+                'tax_number_2',
+            ]);
 
-            $business_location = $request->only(['name', 'country', 'state', 'city', 'zip_code', 'landmark',
-                'website', 'mobile', 'alternate_number', ]);
+            $business_location = $request->only([
+                'name',
+                'country',
+                'state',
+                'city',
+                'zip_code',
+                'landmark',
+                'website',
+                'mobile',
+                'alternate_number',
+            ]);
 
             //Create the business
             $business_details['owner_id'] = $user->id;
@@ -204,7 +222,7 @@ class BusinessController extends Controller
             $new_location = $this->businessUtil->addLocation($business->id, $business_location);
 
             //create new permission with the new location
-            Permission::create(['name' => 'location.'.$new_location->id]);
+            Permission::create(['name' => 'location.' . $new_location->id]);
 
             DB::commit();
 
@@ -224,16 +242,18 @@ class BusinessController extends Controller
                 }
             }
 
-            $output = ['success' => 1,
+            $output = [
+                'success' => 1,
                 'msg' => __('business.business_created_succesfully'),
             ];
 
             return redirect('login')->with('status', $output);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::emergency('File:'.$e->getFile().'Line:'.$e->getLine().'Message:'.$e->getMessage());
+            \Log::emergency('File:' . $e->getFile() . 'Line:' . $e->getLine() . 'Message:' . $e->getMessage());
 
-            $output = ['success' => 0,
+            $output = [
+                'success' => 0,
                 'msg' => __('messages.something_went_wrong'),
             ];
 
@@ -291,7 +311,7 @@ class BusinessController extends Controller
 
         $months = [];
         for ($i = 1; $i <= 12; $i++) {
-            $months[$i] = __('business.months.'.$i);
+            $months[$i] = __('business.months.' . $i);
         }
 
         $accounting_methods = [
@@ -312,7 +332,7 @@ class BusinessController extends Controller
         $shortcuts = json_decode($business->keyboard_shortcuts, true);
 
         $pos_settings = empty($business->pos_settings) ? $this->businessUtil->defaultPosSettings() : json_decode($business->pos_settings, true);
-
+        $pos_settings['introducer_commission_contact'] = $business->default_commission_percent;
         $email_settings = empty($business->email_settings) ? $this->businessUtil->defaultEmailSettings() : $business->email_settings;
 
         $sms_settings = empty($business->sms_settings) ? $this->businessUtil->defaultSmsSettings() : $business->sms_settings;
@@ -332,7 +352,7 @@ class BusinessController extends Controller
         $weighing_scale_setting = ! empty($business->weighing_scale_setting) ? $business->weighing_scale_setting : [];
 
         $payment_types = $this->moduleUtil->payment_types(null, false, $business_id);
-       
+
         return view('business.settings', compact('business', 'currencies', 'tax_rates', 'timezone_list', 'months', 'accounting_methods', 'commission_agent_dropdown', 'units_dropdown', 'date_formats', 'shortcuts', 'pos_settings', 'modules', 'theme_colors', 'email_settings', 'sms_settings', 'mail_drivers', 'allow_superadmin_email_settings', 'custom_labels', 'common_settings', 'weighing_scale_setting', 'payment_types'));
     }
 
@@ -354,20 +374,66 @@ class BusinessController extends Controller
                 return $notAllowed;
             }
 
-            $business_details = $request->only(['name', 'start_date', 'currency_id', 'tax_label_1', 'tax_number_1', 'tax_label_2', 'tax_number_2', 'default_profit_percent', 'default_sales_tax', 'default_sales_discount', 'sell_price_tax', 'sku_prefix', 'time_zone', 'fy_start_month', 'accounting_method', 'transaction_edit_days', 'sales_cmsn_agnt', 'item_addition_method', 'currency_symbol_placement', 'on_product_expiry',
-                'stop_selling_before', 'default_unit', 'expiry_type', 'date_format',
-                'time_format', 'ref_no_prefixes', 'theme_color', 'email_settings',
-                'sms_settings', 'rp_name', 'amount_for_unit_rp',
-                'min_order_total_for_rp', 'max_rp_per_order',
-                'redeem_amount_per_unit_rp', 'min_order_total_for_redeem',
-                'min_redeem_point', 'max_redeem_point', 'rp_expiry_period',
-                'rp_expiry_type', 'custom_labels', 'weighing_scale_setting',
-                'code_label_1', 'code_1', 'code_label_2', 'code_2', 'currency_precision', 'quantity_precision', ]);
+            $business_details = $request->only([
+                'name',
+                'start_date',
+                'currency_id',
+                'tax_label_1',
+                'tax_number_1',
+                'tax_label_2',
+                'tax_number_2',
+                'default_profit_percent',
+                'default_sales_tax',
+                'default_sales_discount',
+                'sell_price_tax',
+                'sku_prefix',
+                'time_zone',
+                'fy_start_month',
+                'accounting_method',
+                'transaction_edit_days',
+                'sales_cmsn_agnt',
+                'item_addition_method',
+                'currency_symbol_placement',
+                'on_product_expiry',
+                'stop_selling_before',
+                'default_unit',
+                'expiry_type',
+                'date_format',
+                'time_format',
+                'ref_no_prefixes',
+                'theme_color',
+                'email_settings',
+                'sms_settings',
+                'rp_name',
+                'amount_for_unit_rp',
+                'min_order_total_for_rp',
+                'max_rp_per_order',
+                'redeem_amount_per_unit_rp',
+                'min_order_total_for_redeem',
+                'min_redeem_point',
+                'max_redeem_point',
+                'rp_expiry_period',
+                'rp_expiry_type',
+                'custom_labels',
+                'weighing_scale_setting',
+                'code_label_1',
+                'code_1',
+                'code_label_2',
+                'code_2',
+                'currency_precision',
+                'quantity_precision',
+                'introducer_commission_contact'
+            ]);
 
             if (! empty($request->input('enable_rp')) && $request->input('enable_rp') == 1) {
                 $business_details['enable_rp'] = 1;
             } else {
                 $business_details['enable_rp'] = 0;
+            }
+            if (! empty($request->input('introducer_commission_contact'))) {
+                $business_details['default_commission_percent'] = $request->input('introducer_commission_contact');
+            } else {
+                $business_details['default_commission_percent'] = 0;
             }
 
             $business_details['amount_for_unit_rp'] = ! empty($business_details['amount_for_unit_rp']) ? $this->businessUtil->num_uf($business_details['amount_for_unit_rp']) : 1;
@@ -413,10 +479,20 @@ class BusinessController extends Controller
                 $business_details['logo'] = $logo_name;
             }
 
-            $checkboxes = ['enable_editing_product_from_purchase',
+            $checkboxes = [
+                'enable_editing_product_from_purchase',
                 'enable_inline_tax',
-                'enable_brand', 'enable_category', 'enable_sub_category', 'enable_price_tax', 'enable_purchase_status',
-                'enable_lot_number', 'enable_racks', 'enable_row', 'enable_position', 'enable_sub_units', ];
+                'enable_brand',
+                'enable_category',
+                'enable_sub_category',
+                'enable_price_tax',
+                'enable_purchase_status',
+                'enable_lot_number',
+                'enable_racks',
+                'enable_row',
+                'enable_position',
+                'enable_sub_units',
+            ];
             foreach ($checkboxes as $value) {
                 $business_details[$value] = ! empty($request->input($value)) && $request->input($value) == 1 ? 1 : 0;
             }
@@ -472,13 +548,15 @@ class BusinessController extends Controller
             $financial_year = $this->businessUtil->getCurrentFinancialYear($business->id);
             $request->session()->put('financial_year', $financial_year);
 
-            $output = ['success' => 1,
+            $output = [
+                'success' => 1,
                 'msg' => __('business.settings_updated_success'),
             ];
         } catch (\Exception $e) {
-            \Log::emergency('File:'.$e->getFile().'Line:'.$e->getLine().'Message:'.$e->getMessage());
+            \Log::emergency('File:' . $e->getFile() . 'Line:' . $e->getLine() . 'Message:' . $e->getMessage());
 
-            $output = ['success' => 0,
+            $output = [
+                'success' => 0,
                 'msg' => __('messages.something_went_wrong'),
             ];
         }
@@ -519,17 +597,17 @@ class BusinessController extends Controller
             $api_settings = $this->moduleUtil->getApiSettings($api_token);
 
             $settings = Business::where('id', $api_settings->business_id)
-                        ->value('ecom_settings');
+                ->value('ecom_settings');
 
             $settings_array = ! empty($settings) ? json_decode($settings, true) : [];
 
             if (! empty($settings_array['slides'])) {
                 foreach ($settings_array['slides'] as $key => $value) {
-                    $settings_array['slides'][$key]['image_url'] = ! empty($value['image']) ? url('uploads/img/'.$value['image']) : '';
+                    $settings_array['slides'][$key]['image_url'] = ! empty($value['image']) ? url('uploads/img/' . $value['image']) : '';
                 }
             }
         } catch (\Exception $e) {
-            \Log::emergency('File:'.$e->getFile().'Line:'.$e->getLine().'Message:'.$e->getMessage());
+            \Log::emergency('File:' . $e->getFile() . 'Line:' . $e->getLine() . 'Message:' . $e->getMessage());
 
             return $this->respondWentWrong($e);
         }
@@ -549,14 +627,14 @@ class BusinessController extends Controller
 
             $data['email_settings'] = $email_settings;
             \Notification::route('mail', $email_settings['mail_from_address'])
-            ->notify(new TestEmailNotification($data));
+                ->notify(new TestEmailNotification($data));
 
             $output = [
                 'success' => 1,
                 'msg' => __('lang_v1.email_tested_successfully'),
             ];
         } catch (\Exception $e) {
-            \Log::emergency('File:'.$e->getFile().'Line:'.$e->getLine().'Message:'.$e->getMessage());
+            \Log::emergency('File:' . $e->getFile() . 'Line:' . $e->getLine() . 'Message:' . $e->getMessage());
             $output = [
                 'success' => 0,
                 'msg' => $e->getMessage(),
@@ -592,7 +670,7 @@ class BusinessController extends Controller
                 'msg' => $response,
             ];
         } catch (\Exception $e) {
-            \Log::emergency('File:'.$e->getFile().'Line:'.$e->getLine().'Message:'.$e->getMessage());
+            \Log::emergency('File:' . $e->getFile() . 'Line:' . $e->getLine() . 'Message:' . $e->getMessage());
             $output = [
                 'success' => 0,
                 'msg' => $e->getMessage(),
