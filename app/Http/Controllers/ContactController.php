@@ -71,7 +71,7 @@ class ContactController extends Controller
         if (empty($type) || !in_array($type, $types)) {
             return redirect()->back();
         }
-
+        $payment_types = ['cash' => __('lang_v1.cash'), 'card' => __('lang_v1.card'), 'cheque' => __('lang_v1.cheque'), 'bank_transfer' => __('lang_v1.bank_transfer'), 'other' => __('lang_v1.other')];
         if (request()->ajax()) {
             if ($type == 'supplier') {
                 return $this->indexSupplier();
@@ -92,7 +92,7 @@ class ContactController extends Controller
         }
 
         return view('contact.index')
-            ->with(compact('type', 'reward_enabled', 'customer_groups', 'users'));
+            ->with(compact('type', 'reward_enabled', 'customer_groups', 'users', 'payment_types'));
     }
 
     public function getCustomersById($id)
@@ -417,7 +417,9 @@ class ContactController extends Controller
                     if ($return_due > 0) {
                         $html .= '<li><a href="' . action([\App\Http\Controllers\TransactionPaymentController::class, 'getPayContactDue'], [$row->id]) . '?type=sell_return" class="pay_purchase_due"><i class="fas fa-money-bill-alt" aria-hidden="true"></i>' . __('lang_v1.pay_sell_return_due') . '</a></li>';
                     }
-
+                    if (auth()->user()->can('customer.update')) {
+                        $html .= '<li><a href="#" class="payout_commission_button" data-contact-id="' . $row->id . '" data-bs-toggle="modal" data-bs-target="#payoutModal"><i class="fas fa-coins" aria-hidden="true"></i>' . __('Payout Commission') . '</a></li>';
+                    }
                     if (auth()->user()->can('customer.view') || auth()->user()->can('customer.view_own')) {
                         $html .= '<li><a href="' . action([\App\Http\Controllers\ContactController::class, 'show'], [$row->id]) . '"><i class="fas fa-eye" aria-hidden="true"></i>' . __('messages.view') . '</a></li>';
                     }
@@ -793,11 +795,38 @@ class ContactController extends Controller
 
         $activities = Activity::forSubject($contact)
             ->with(['causer', 'subject'])
+            ->whereNotIn('description', ['add_commission', 'reduce_commission'])
             ->latest()
             ->get();
 
+        $activities_commission = Activity::forSubject($contact)
+            ->with(['causer', 'subject'])
+            ->whereIn('description', ['add_commission', 'reduce_commission'])
+            ->latest()
+            ->get();
+        $transactionUtil = new \App\Utils\TransactionUtil();
+        foreach ($activities_commission as $activity) {
+            $attributes = $activity->getExtraProperty('attributes');
+            $old = $activity->getExtraProperty('old');
+
+            $attributes_amount = $attributes['amount'] ?? 0;
+            $old_amount = $old['amount'] ?? 0;
+
+            $change = $attributes_amount - $old_amount;
+
+            $formatted_attributes_amount = $transactionUtil->num_f($attributes_amount, true);
+            $formatted_old_amount = $transactionUtil->num_f($old_amount, true);
+            $formatted_change = $transactionUtil->num_f($change, true);
+
+            $activity->formatted_attributes_amount = $formatted_attributes_amount;
+            $activity->formatted_old_amount = $formatted_old_amount;
+            $activity->formatted_change = $formatted_change;
+            $activity->change = $change;
+        }
+
+
         return view('contact.show')
-            ->with(compact('contact', 'reward_enabled', 'contact_dropdown', 'business_locations', 'view_type', 'contact_view_tabs', 'activities'));
+            ->with(compact('contact', 'reward_enabled', 'contact_dropdown', 'business_locations', 'view_type', 'contact_view_tabs', 'activities', 'activities_commission'));
     }
 
     /**
@@ -815,7 +844,7 @@ class ContactController extends Controller
         if (request()->ajax()) {
             $business_id = request()->session()->get('user.business_id');
             $contact = Contact::where('business_id', $business_id)->find($id);
-
+            $introducer = Contact::contactDropdown($business_id, false, false, true, 'CO0001');
             if (!$this->moduleUtil->isSubscribed($business_id)) {
                 return $this->moduleUtil->expiredResponse();
             }
@@ -852,7 +881,7 @@ class ContactController extends Controller
             $users = config('constants.enable_contact_assign') ? User::forDropdown($business_id, false, false, false, true) : [];
 
             return view('contact.edit')
-                ->with(compact('contact', 'types', 'customer_groups', 'opening_balance', 'users'));
+                ->with(compact('contact', 'introducer', 'types', 'customer_groups', 'opening_balance', 'users'));
         }
     }
 
@@ -1828,14 +1857,107 @@ class ContactController extends Controller
         ];
     }
 
-    public function checkContact($id)
+    public function showCheckContact()
     {
-        $contact = Contact::find($id);
-
+        return view('contact.check_contact_info');
+    }
+    public function checkContact(Request $request)
+    {
+        $contact_id = $request->input('contact_id');
+        $contact = Contact::where('contact_id', $contact_id)->first();
+        $transactionUtil = new \App\Utils\TransactionUtil();
         if ($contact) {
-            return view('check_contact_info', compact('contact'));
+            $name_parts = array_filter([
+                $contact->first_name,
+                $contact->middle_name,
+                $contact->last_name
+            ]);
+            $commission_per = '';
+            $full_name = implode(' ', $name_parts);
+            if ($contact->custom_field1) {
+                $commission_per = $contact->custom_field1 . " %";
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'full_name' => $full_name,
+                    'custom_field4' => $contact->custom_field4,
+                    'email' => $contact->email,
+                    'phone' => $contact->mobile,
+                    'commission_percentage' =>  $commission_per,
+                    'balance' => $transactionUtil->num_f($contact->balance, true),
+                    'shipping_address' => $contact->shipping_address,
+                    'custom_field1' => $transactionUtil->num_f($contact->custom_field1, true),
+                    'custom_field2' => $transactionUtil->num_f($contact->custom_field2, true),
+                ]
+            ]);
         } else {
-            return back()->with('error', 'Contact not found!');
+            return response()->json([
+                'success' => false,
+                'message' => 'Contact not found!'
+            ], 404);
+        }
+    }
+
+    public function payout(Request $request, $contact_id)
+    {
+        $is_admin = $this->contactUtil->is_admin(auth()->user());
+        if (!$is_admin) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+
+        $request->validate([
+            'amount' => 'required|numeric|min:0',
+            'payment_method' => 'required|string|in:cash,card,cheque,bank_transfer,other',
+            'bank_account_number' => 'required_if:payment_method,bank_transfer'
+        ]);
+
+        $amount = $request->input('amount');
+        $paymentMethod = $request->input('payment_method');
+        $bankAccountNumber = $request->input('bank_account_number');
+
+        DB::beginTransaction();
+        try {
+            $contact = Contact::find($contact_id);
+
+            if (!$contact) {
+                DB::rollBack();
+                return response()->json(['message' => 'Contact not found'], 404);
+            }
+
+            if ($contact->custom_field2 < $amount) {
+                DB::rollBack();
+                return response()->json(['message' => 'Insufficient commission amount'], 400);
+            }
+
+            $contact->custom_field2 -= $amount;
+            $contact->save();
+            $payment_ref_no = 'PAYOUT-' . str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+            $data = [
+                'paid_on' => \Carbon\Carbon::now()->toDateTimeString(),
+                'amount' => $amount,
+                'payment_for' => $contact_id,
+                'method' => $paymentMethod,
+                'business_id' => $contact->business_id,
+                'payment_ref_no' => 'PAYOUT-' . $payment_ref_no,
+                'note' => 'payout',
+                'payment_type' => 'credit',
+                'card_type' => 'credit',
+                'created_by' => auth()->user()->id,
+                'is_advance' => 1,
+                'bank_account_number' => $bankAccountNumber,
+            ];
+
+            TransactionPayment::create($data);
+
+            DB::commit();
+
+            return response()->json(['message' => 'Payout successful'], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'An error occurred. Please try again.'], 500);
         }
     }
 }

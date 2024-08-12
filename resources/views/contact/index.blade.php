@@ -227,7 +227,7 @@
                                 </strong>
                             </td>
                             <td colspan="1" class="footer_contact_advance"></td>
-                            <td colspan="4" ></td>
+                            <td colspan="4"></td>
                             <td class="footer_contact_due"></td>
                             <td class="footer_contact_return_due"></td>
                             <td></td>
@@ -250,7 +250,7 @@
         </div>
         <div class="modal fade pay_contact_due_modal" tabindex="-1" role="dialog" aria-labelledby="gridSystemModalLabel">
         </div>
-
+        @include('contact.partials.payout_modal', ['contact' => $contact])
     </section>
     <!-- /.content -->
 @stop
@@ -264,6 +264,7 @@
             // This example requires the Places library. Include the libraries=places
             // parameter when you first load the API. For example:
             // <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places">
+
 
             function initAutocomplete() {
                 var map = new google.maps.Map(document.getElementById('map'), {
@@ -354,4 +355,129 @@
             });
         </script>
     @endif
+    <script>
+        $(document).on('click', '.payout_commission_button', function(e) {
+            e.preventDefault();
+
+            var contactId = $(this).data('contact-id');
+
+            $('#contact_id').val(contactId);
+
+            $('#alertContainer').empty();
+
+            $('#payoutModal').modal('show');
+        });
+
+
+
+        $('#payment_method').on('change', function() {
+            var selectedMethod = $(this).val();
+
+            if (selectedMethod === 'bank_transfer') {
+                $('#bank_account_field').show();
+            } else {
+                $('#bank_account_field').hide();
+            }
+
+            if (selectedMethod === 'card') {
+                $('#card_field').show();
+            } else {
+                $('#card_field').hide();
+            }
+        });
+
+        $(document).on('click', '#confirmPayout', function(e) {
+            e.preventDefault();
+
+            var contactId = $('#contact_id').val();
+            var amount = $('#amount').val();
+            var bank_account_number = $('#bank_account_number').val();
+            var paymentMethod = $('#payment_method').val();
+            var alertContainer = $('#alertContainer');
+            // var card_number = $('#card_number').val();
+            // var card_holder_name = $('#card_holder_name').val();
+            // var card_transaction_number = $('#card_transaction_number').val();
+            // var card_type = $('#card_type').val();
+            // var card_month = $('#card_month').val();
+            // var card_year = $('#card_year').val();
+
+            // if (paymentMethod === 'card') {
+            //     if (card_number === '') {
+            //         alertContainer.html(
+            //             '<div class="alert alert-danger" role="alert">Card number is required</div>');
+            //         return;
+            //     }
+
+            //     if (card_holder_name === '') {
+            //         alertContainer.html(
+            //             '<div class="alert alert-danger" role="alert">Card holder name is required</div>');
+            //         return;
+            //     }
+
+            //     if (card_transaction_number === '') {
+            //         alertContainer.html(
+            //             '<div class="alert alert-danger" role="alert">Card transaction number is required</div>');
+            //         return;
+            //     }
+
+            //     if (card_type === '') {
+            //         alertContainer.html(
+            //             '<div class="alert alert-danger" role="alert">Card type is required</div>');
+            //         return;
+            //     }
+
+            //     if (card_month === '') {
+            //         alertContainer.html(
+            //             '<div class="alert alert-danger" role="alert">Card month is required</div>');
+            //         return;
+            //     }
+
+            //     if (card_year === '') {
+            //         alertContainer.html(
+            //             '<div class="alert alert-danger" role="alert">Card year is required</div>');
+            //         return;
+            //     }
+
+
+            // }
+
+            alertContainer.empty();
+
+            $.ajax({
+                url: '/commission/payout/' + contactId,
+                type: 'POST',
+                data: {
+                    _token: $('input[name="_token"]').val(),
+                    amount: amount,
+                    payment_method: paymentMethod,
+                    bank_account_number: bank_account_number,
+                },
+                success: function(response) {
+                    alertContainer.html('<div class="alert alert-success" role="alert">' + response
+                        .message + '</div>');
+                    setTimeout(function() {
+                        $('#payoutModal').modal('hide');
+                    }, 2000);
+
+                    contact_table.ajax.reload(null, false);
+                },
+                error: function(xhr) {
+                    var response = xhr.responseJSON;
+                    var errorMessage = response.message ||
+                        'An unexpected error occurred. Please try again.';
+                    alertContainer.html('<div class="alert alert-danger" role="alert">' + errorMessage +
+                        '</div>');
+                }
+            });
+        });
+        $('#payoutModal').on('hidden.bs.modal', function() {
+            $('#amount').val('');
+            $('#payment_method').val('cash');
+            $('#alertContainer').empty();
+        });
+    </script>
+
+
+
+
 @endsection

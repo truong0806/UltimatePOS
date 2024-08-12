@@ -121,14 +121,18 @@ class Contact extends Authenticatable
      * @param $prepend_none = true (boolean)
      * @return array users
      */
-    public static function contactDropdown($business_id, $exclude_default = false, $prepend_none = true, $append_id = true)
+    public static function contactDropdown($business_id, $exclude_default = false, $prepend_none = true, $append_id = true, $notWalk = null)
     {
         $query = Contact::where('business_id', $business_id)
             ->where('type', '!=', 'lead')
             ->active();
 
+
         if ($exclude_default) {
             $query->where('is_default', 0);
+        }
+        if ($notWalk) {
+            $query->where('contact_id', '!=', $notWalk);
         }
 
         if ($append_id) {
@@ -400,6 +404,4 @@ class Contact extends Authenticatable
     {
         return $this->hasMany(Transaction::class);
     }
-
-    
 }

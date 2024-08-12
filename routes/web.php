@@ -73,13 +73,14 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-
 include_once 'install_r.php';
 
 Route::middleware(['setData'])->group(function () {
     Route::get('/', function () {
         return view('welcome');
     });
+    Route::get('/check-contact', [ContactController::class, 'showCheckContact'])->name('showCheckContact');
+    Route::get('/contact-info', [ContactController::class, 'checkContact'])->name('checkContact');
 
     Auth::routes();
 
@@ -98,7 +99,7 @@ Route::middleware(['setData'])->group(function () {
     Route::post('/confirm-payment/{id}', [SellPosController::class, 'confirmPayment'])
         ->name('confirm_payment');
 });
-Route::get('/check-contact/{id}', [ContactController::class, 'checkContact'])->name('checkContact');
+
 
 
 //Routes for authenticated users only
@@ -171,6 +172,7 @@ Route::middleware(['setData', 'auth', 'SetSessionData', 'language', 'timezone', 
     Route::get('/contacts/customers', [ContactController::class, 'getCustomers']);
     Route::get('/contacts/id/{id}', [ContactController::class, 'getCustomersById']);
     Route::resource('contacts', ContactController::class);
+    Route::post('/commission/payout/{contact_id}', [ContactController::class, 'payout'])->name('contact.payout');
 
     Route::get('taxonomies-ajax-index-page', [TaxonomyController::class, 'getTaxonomyIndexPage']);
     Route::resource('taxonomies', TaxonomyController::class);

@@ -326,7 +326,7 @@ class AdminSidebarMenu
                             $sub->url(
                                 action([\App\Http\Controllers\SellController::class, 'getConstructionTransaction']),
                                 __('construction.all_construction'),
-                                ['icon' => 'fa fas fa-list', 'active' => request()->segment(1) == 'sells' && request()->segment(2) == null]
+                                ['icon' => 'fa fas fa-list', 'active' => request()->segment(1) == 'all_construction' && request()->segment(2) == null]
                             );
                         }
 

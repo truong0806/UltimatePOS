@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', __('report.customer') . ' - ' . __('report.supplier') . ' ' . __('report.reports'))
+@section('title', __('report.construction'))
 
 @section('content')
 
@@ -7,9 +7,9 @@
     <section class="content-header">
         <h1>{{ __('report.construction') }}</h1>
         <!-- <ol class="breadcrumb">
-                                    <li><a href="#"><i class="fa fa-dashboard"></i> Level</a></li>
-                                    <li class="active">Here</li>
-                                </ol> -->
+                                                                    <li><a href="#"><i class="fa fa-dashboard"></i> Level</a></li>
+                                                                    <li class="active">Here</li>
+                                                                </ol> -->
     </section>
 
     <!-- Main content -->
@@ -18,18 +18,29 @@
         <div class="row">
             <div class="col-md-12">
                 @component('components.filters', ['title' => __('report.filters')])
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <div class="form-group">
                             {!! Form::label('scr_contact_id', __('report.contact') . ':') !!}
                             {!! Form::select('scr_contact_id', $contact_dropdown, null, [
-                                'class' => 'form-control select2',
+                                'class' => 'form-control w-full',
                                 'id' => 'scr_contact_id',
                                 'placeholder' => __('lang_v1.all'),
                             ]) !!}
                         </div>
                     </div>
 
-                    <div class="col-md-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            {!! Form::label('scr_construction_id', __('report.construction_fillter') . ':') !!}
+                            {!! Form::select('scr_construction_id', $construction_dropdown, null, [
+                                'class' => 'form-control w-full',
+                                'id' => 'scr_construction_id',
+                                'placeholder' => __('lang_v1.all'),
+                            ]) !!}
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
                         <div class="form-group">
                             {!! Form::label('scr_date_filter', __('report.date_range') . ':') !!}
                             {!! Form::text('date_range', null, [

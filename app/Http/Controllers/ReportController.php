@@ -377,6 +377,9 @@ class ReportController extends Controller
             if (! empty($request->input('contact_id'))) {
                 $construction->where('t.contact_id', $request->input('contact_id'));
             }
+            if (! empty($request->input('construction_id'))) {
+                $construction->where('t.construction_id', $request->input('construction_id'));
+            }
 
             if (! empty($request->input('contact_type'))) {
                 $construction->whereIn('contacts.type', [$request->input('contact_type'), 'both']);
@@ -396,7 +399,7 @@ class ReportController extends Controller
                         $name .
                         '</a>';
                 })
-                ->addColumn('contact_name', function($row){
+                ->addColumn('contact_name', function ($row) {
                     return $row->contact->name;
                 })
                 ->editColumn(
@@ -462,9 +465,13 @@ class ReportController extends Controller
         $business_locations = BusinessLocation::forDropdown($business_id, true);
 
         $contact_dropdown = Contact::contactDropdown($business_id, false, false);
+        $construction_dropdown = Construction::forDropdown();
+        $construction_dropdown = $construction_dropdown->filter(function ($value) {
+            return $value !== "None";
+        });
 
         return view('report.construction')
-            ->with(compact('customer_group', 'types', 'business_locations', 'contact_dropdown'));
+            ->with(compact('customer_group', 'types', 'business_locations', 'contact_dropdown', 'construction_dropdown'));
     }
 
     /**
@@ -1233,7 +1240,7 @@ class ReportController extends Controller
                 ->make(true);
         }
 
-            $users = User::forDropdown($business_id, false);
+        $users = User::forDropdown($business_id, false);
         $payment_types = $this->transactionUtil->payment_types(null, true, $business_id);
 
         return view('report.register_report')
@@ -2486,8 +2493,9 @@ class ReportController extends Controller
             $parent_payment_query_part = empty($location_id) ? 'AND transaction_payments.parent_id IS NULL' : '';
 
             $query = TransactionPayment::leftjoin('transactions as t', function ($join) use ($business_id) {
-                $join->on('transaction_payments.transaction_id', '=', 't.id')
+                $join
                     ->where('t.business_id', $business_id)
+                    ->where('transaction_payments.is_advance', 1)
                     ->whereIn('t.type', ['sell', 'opening_balance']);
             })
                 ->leftjoin('contacts as c', 't.contact_id', '=', 'c.id')
@@ -2500,24 +2508,25 @@ class ReportController extends Controller
                 )
                 ->where('transaction_payments.business_id', $business_id)
                 ->where(function ($q) use ($business_id, $contact_filter1, $contact_filter2, $parent_payment_query_part) {
-                    $q->whereRaw("(transaction_payments.transaction_id IS NOT NULL AND t.type IN ('sell', 'opening_balance') $parent_payment_query_part $contact_filter1)")
+                    $q->whereRaw("(t.type IN ('sell', 'opening_balance') $parent_payment_query_part $contact_filter1)")
                         ->orWhereRaw("EXISTS(SELECT * FROM transaction_payments as tp JOIN transactions ON tp.transaction_id = transactions.id WHERE transactions.type IN ('sell', 'opening_balance') AND transactions.business_id = $business_id AND tp.parent_id=transaction_payments.id $contact_filter2)");
                 })
                 ->select(
                     DB::raw('IFNULL(cs.name, "") as constructions_name'),
-                    DB::raw("IF(transaction_payments.transaction_id IS NULL, 
-                                (SELECT c.name FROM transactions as ts
-                                JOIN contacts as c ON ts.contact_id=c.id 
-                                WHERE ts.id=(
-                                        SELECT tps.transaction_id FROM transaction_payments as tps
-                                        WHERE tps.parent_id=transaction_payments.id LIMIT 1
-                                    )
-                                ),
-                                (SELECT CONCAT(COALESCE(CONCAT(c.supplier_business_name, '<br>'), ''), c.name) FROM transactions as ts JOIN
-                                    contacts as c ON ts.contact_id=c.id
-                                    WHERE ts.id=t.id 
-                                )
-                            ) as customer"),
+                    DB::raw("
+                    IF(
+                        transaction_payments.transaction_id IS NULL, 
+                        (SELECT CONCAT(COALESCE(CONCAT(c.supplier_business_name, '<br>'), ''), c.contact_id)
+                         FROM contacts as c
+                         WHERE c.id = transaction_payments.payment_for
+                        ),
+                        (SELECT CONCAT(COALESCE(CONCAT(c.supplier_business_name, '<br>'), ''), c.contact_id) 
+                         FROM transactions as ts 
+                         JOIN contacts as c ON ts.contact_id = c.id 
+                         WHERE ts.id = t.id
+                        )
+                    ) as customer
+                "),
                     'transaction_payments.amount',
                     'transaction_payments.is_return',
                     'transaction_payments.advance_balance',

@@ -133,7 +133,15 @@
                                     {{ session('business.rp_name') ?? __('lang_v1.reward_points') }}</a>
                             </li>
                         @endif
-
+                        <li
+                            class="
+                    @if (!empty($view_type) && $view_type == 'reward_point') active
+                    @else
+                        '' @endif">
+                            <a href="#commission_activity_tab" data-toggle="tab" aria-expanded="true"><i class="fas fa-gift"
+                                    aria-hidden="true"></i>
+                                {{ session('business.rp_name') ?? __('lang_v1.commission_activity') }}</a>
+                        </li>
                         <li
                             class="
                         @if (!empty($view_type) && $view_type == 'activities') active
@@ -278,6 +286,9 @@
                                 </div>
                             </div>
                         @endif
+                        <div class="tab-pane" id="commission_activity_tab">
+                            @include('contact.partials.commission_activity')
+                        </div>
 
                         <div class="tab-pane" id="activities_tab">
                             @include('activity_log.activities')

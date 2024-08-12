@@ -73,6 +73,7 @@ return [
     'expiring_in_1_year' => 'Expiring in a year',
     'profit_loss' => 'Profit / Loss Report',
     'construction' => 'Construction Report',
+    'construction_fillter' => 'Construction',
     'opening_stock' => 'Opening Stock',
     'closing_stock' => 'Closing stock',
     'total_expense' => 'Total Expense',

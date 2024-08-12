@@ -4850,7 +4850,7 @@ class TransactionUtil extends Util
             ->with(['sell_lines', 'payment_lines'])
             ->first();
 
-        $this->updateCommission($transaction, 'isDelete', null);
+        $this->updateCommission($transaction, 'isDelete', $transaction->payment_status);
 
         if (!empty($transaction)) {
             $log_properities = [
@@ -6906,66 +6906,119 @@ class TransactionUtil extends Util
 
     public function updateCommission($transactionUpdate, $transaction_status_before, $paymentStatus = null)
     {
+        if($transactionUpdate == $transaction_status_before){
+            return;
+        }
+        $contactUtil = new \App\Utils\ContactUtil();
         $construction = \App\Construction::find($transactionUpdate->construction_id);
 
         if (is_null($transactionUpdate->construction_id)) {
             $contact = \App\Contact::find($transactionUpdate->contact_id);
             if ($contact->custom_field3 && empty($construction)) {
-                $this->updateCommissionForIntroducer($contact->custom_field3, $transactionUpdate, $construction, $transaction_status_before, $contact->business_id);
+                $this->updateCommissionForIntroducer($contact->custom_field3, $contact->contact_id, $transactionUpdate, $construction, $transaction_status_before, $contact->business_id);
             }
             return;
         }
 
         $contact = \App\Contact::find($construction->introducer_id);
         $commission = $transactionUpdate->total_before_tax * ($contact->custom_field1 / 100);
-        if (!is_null($transactionUpdate->construction_id) && !is_null($contact->custom_field1)) {
-            return;
-        }
+
+        $activity_log = [
+            'invoice_id' => "#" . $transactionUpdate->invoice_no,
+            'referral' => false,
+            'construction_id' => $construction->id,
+            'old_commission_amount_temp' => (int) $contact->custom_field4,
+            'old_commission_amount' => (int) $contact->custom_field2,
+            'new_commission_amount_temp' => null,
+            'new_commission_amount' => null,
+            'action' => null
+        ];
+
         if ($transactionUpdate->status == 'final') {
             if ($paymentStatus === null && $transaction_status_before == 'isCreate') {
                 $contact->custom_field4 += $commission;
-            } elseif ($paymentStatus == 'paid') {
+                $activity_log['action'] = 'add_commission_temp';
+            } elseif ($paymentStatus == 'paid' && $transaction_status_before != 'isDelete') {
                 $contact->custom_field2 += $commission;
                 $contact->custom_field4 -= $commission;
+                $activity_log['action'] = 'move_commission_temp_to_final';
+            } elseif ($paymentStatus == 'due' && $transaction_status_before == 'draft') {
+                $activity_log['action'] = 'update_status_trans';
             } elseif ($transaction_status_before == 'isDeletePayment') {
                 $contact->custom_field2 -= $commission;
                 $contact->custom_field4 += $commission;
+                $activity_log['action'] = 'revert_commission_payment';
+                $activity_log['transaction_status'] = 'delete_payment';
             } elseif ($transaction_status_before == 'draft' && $paymentStatus == 'paid') {
                 $contact->custom_field2 -= $commission;
                 $contact->custom_field4 += $commission;
+                $activity_log['action'] = 'revert_draft_commission_payment';
             } elseif ($transaction_status_before == 'isDelete') {
-                $contact->custom_field4 -= $commission;
                 if ($paymentStatus == 'paid') {
                     $contact->custom_field2 -= $commission;
+                    $activity_log['action'] = 'delete_final_commission';
+                    $activity_log['transaction_status'] = 'delete_transaction';
+                } else {
+                    $contact->custom_field4 -= $commission;
+                    $activity_log['action'] = 'delete_temp_commission';
+                    $activity_log['transaction_status'] = 'delete_transaction';
                 }
             }
         } elseif ($transactionUpdate->status == 'draft') {
             $contact->custom_field4 += $commission;
+            $activity_log['action'] = 'add_commission_temp';
             if ($paymentStatus == 'due') {
                 $contact->custom_field4 -= $commission;
+                $activity_log['action'] = 'remove_due_temp_commission';
             }
         }
 
+        $activity_log['new_commission_amount_temp'] = (int) $contact->custom_field4;
+        $activity_log['new_commission_amount'] = (int) $contact->custom_field2;
+
+        $contactUtil->activityLog($contact,  $activity_log['action'], null, $activity_log);
         $contact->save();
     }
 
 
-    public function updateCommissionForIntroducer($intro_id, $transactionUpdate, $construction, $transaction_status_before = null, $business_id)
+
+    public function updateCommissionForIntroducer($intro_id, $contact_id, $transactionUpdate, $construction, $transaction_status_before = null, $business_id)
     {
         $contact = \App\Contact::find($intro_id);
+        $contactUtil = new \App\Utils\ContactUtil();
+
+        $activity_log = [];
 
         if (is_null($contact) || empty($contact) || !empty($construction) || is_null($business_id)) {
             return;
         }
-        $default_commission_percent = Business::find($business_id);
-        if ($default_commission_percent == 0) {
+        $bussiness = Business::find($business_id);
+        $default_commission_percent = $bussiness->default_commission_percent;
+        $action = '';
+        $activity_log['invoice_id'] = "#" . $transactionUpdate->invoice_no;
+        $activity_log['referral'] = true;
+        $activity_log['contact_id'] = $contact_id;
+        if ($default_commission_percent != 0) {
             $commission = $transactionUpdate->total_before_tax * ($default_commission_percent / 100);
+            $old_commission_amount = $contact->custom_field2;
             if ($transaction_status_before == 'isDeletePayment' && $transactionUpdate->payment_status == 'paid') {
                 $contact->custom_field2 -= $commission;
+                $activity_log['attributes']['amount'] = (int) $contact->custom_field2;
+                $activity_log['old']['amount'] = (int) $old_commission_amount;
+                $action = 'reduce_commission';
+            } elseif ($transaction_status_before == 'final' && $transactionUpdate->status == 'draft') {
+                $contact->custom_field2 -= $commission;
+                $contact->custom_field4 += $commission;
+                $activity_log['attributes']['amount'] = (int) $contact->custom_field2;
+                $activity_log['old']['amount'] = (int) $old_commission_amount;
+                $action = 'reduce_commission';
             } else {
                 $contact->custom_field2 += $commission;
+                $activity_log['attributes']['amount'] = (int) $contact->custom_field2;
+                $activity_log['old']['amount'] = (int) $old_commission_amount;
+                $action = 'add_commission';
             }
-
+            $contactUtil->activityLog($contact,  $action, null, $activity_log);
             $contact->save();
         }
     }

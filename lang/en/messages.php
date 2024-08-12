@@ -12,6 +12,7 @@ return [
     */
     'ok' => 'Ok',
     'save_changes' => 'Save changes',
+    'payment_method' => 'Payment method',
     'billing_address' => 'Billing address',
     'contact_address' => 'Contact address',
     'commission_agent' => 'Commission agent',

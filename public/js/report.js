@@ -50,6 +50,7 @@ $(document).ready(function () {
                 d.start_date = start;
                 d.end_date = end;
                 d.contact_id = $('#scr_contact_id').val();
+                d.construction_id = $('#scr_construction_id').val();
             },
         },
         columnDefs: [
@@ -118,6 +119,7 @@ $(document).ready(function () {
                 d.start_date = start;
                 d.end_date = end;
                 d.contact_id = $('#scr_contact_id').val();
+                d.construction_id = $('#scr_construction_id').val();
             },
         },
         columnDefs: [
@@ -177,14 +179,18 @@ $(document).ready(function () {
     });
 
     if ($('#supplier_report_tbl').length != 0) {
-        $('#cnt_customer_group_id, #contact_type, #cs_report_location_id, #scr_contact_id').change(
-            function () {
-                supplier_report_tbl.ajax.reload();
-            }
-        );
+        $(
+            '#cnt_customer_group_id, #contact_type, #cs_report_location_id, #scr_contact_id',
+            '#scr_construction_id'
+        ).change(function () {
+            supplier_report_tbl.ajax.reload();
+        });
     }
     if ($('#construction_report_tbl').length != 0) {
         $('#scr_contact_id').change(function () {
+            construction_report_tbl.ajax.reload();
+        });
+        $('#scr_construction_id').change(function () {
             construction_report_tbl.ajax.reload();
         });
     }
